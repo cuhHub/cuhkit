@@ -1,3 +1,5 @@
+# cuhkit
+
 ## 📚 | Overview
 cuhkit, a CLI to streamline the development of cuhHub addons and mods, featuring:
 - Addon/mod publishing (publishing addon/mod to cuhHub servers)
