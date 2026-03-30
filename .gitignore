@@ -1,0 +1,11 @@
+# Cache
+*.pyc
+__pycache__
+
+# Distribution files
+dist
+*.egg-info
+
+# Testing
+tests/dump
+test*
