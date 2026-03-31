@@ -87,8 +87,8 @@ def requires_api_token():
 @click.group()
 @click.version_option(__VERSION__)
 @click.help_option()
-@click.option("verbose", "--verbose", "-v", is_flag = True, help = "Enables verbose output.")
 @click.pass_context
+@click.option("verbose", "--verbose", "-v", is_flag = True, help = "Enables verbose output.")
 def cli(context: click.Context, verbose: bool):
     """
     Main CLI entry point.
@@ -189,14 +189,26 @@ def setup(context: cli_context.CLIContext, project: projects.AddonProject):
 @cli_context.pass_context
 @requires_project()
 @requires_api_token()
-def publish(context: cli_context.CLIContext, project: projects.Project, api_token: str):
+@click.option(
+    "--server", "-s", "server_id",
+    type = int,
+    required = True,
+    help = "The ID of the server to publish to, or -1 for all servers."
+)
+@click.option(
+    "--dev", "-d", "is_dev",
+    is_flag = True,
+    help = "Whether or not to publish as a development build."
+)
+@click.confirmation_option(prompt = "Are you sure you want to publish this cuhkit project?")
+def publish(context: cli_context.CLIContext, project: projects.Project, api_token: str, server_id: int, is_dev: bool):
     """
     Publish a cuhkit project to cuhHub.
     """
     
     print(api_token)
 
-    # todo: publishing lgoic
+    # todo: publishing logic
     logger.info("Published cuhkit project.")
 
 @cli.command()
