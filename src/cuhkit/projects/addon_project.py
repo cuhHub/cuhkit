@@ -36,9 +36,11 @@ from cuhkit.exceptions import (
     ProjectAlreadyExistsException
 )
 
+from cuhkit.libs.api import Client
 from cuhkit.libs import addon_builder
 from cuhkit.libs.timeit import TimeIt
 from cuhkit.log import logger
+from cuhkit.credentials import credentials
 
 # // Main
 __all__ = [
@@ -76,6 +78,7 @@ class AddonProject(Project):
             path = path
         )
         
+        self.api_client = Client(token = credentials.api_token) if credentials.api_token is not None else None
         self.project_configuration = self.get_project_configuration()
         
     def get_stormworks_addon_directory(self) -> Path:
@@ -108,6 +111,89 @@ class AddonProject(Project):
 
         with TimeIt(): 
             addon_builder.build_addon(self.project_configuration.src, self.project_configuration.build_destination)
+            
+    def _get_published_addon_name(self, is_dev: bool) -> str:
+        """
+        Returns the name of the published addon.
+        
+        Args:
+            is_dev (bool): Whether or not to return the development build name.
+            
+        Returns:
+            str: The name of the published addon.
+        """
+
+        if is_dev:
+            return f"{self.name}_dev"
+
+        return self.name
+    
+    def _get_publish_server_ids(self, server_id: int) -> list[int]:
+        """
+        Returns the server IDs to publish to.
+        
+        Args:
+            server_id (int): The server ID to publish to, or -1 for all.
+            
+        Returns:
+            list[int]: The server IDs to publish to.
+        """
+
+        if server_id == -1:
+            return [server["id"] for server in self.api_client.get_servers()]
+        
+        return [server_id]
+            
+    def publish(self, server_id: int = -1, is_dev: bool = False):
+        """
+        Publishes the addon project to cuhHub.
+        
+        Args:
+            server_id (int): The server ID to publish to, or -1 for all.
+            is_dev (bool): Whether or not to publish as a development build.
+            
+        Raises:
+            ValueError: If no API token is found in credentials
+            FileNotFoundError: If the addon playlist file could not be found
+        """
+        
+        if self.api_client is None:
+            raise ValueError("No API token found in credentials, can't publish.")
+        
+        addon_name = self._get_published_addon_name(is_dev)
+        logger.info(f"Uploading addon to cuhHub as '{addon_name}'...")
+        
+        if not self.project_configuration.build_destination.exists():
+            logger.info("Addon build not found, building...")
+            self.build()
+            
+        playlist_file = self.project_configuration.src / "playlist.xml"
+        
+        if not playlist_file.exists():
+            raise FileNotFoundError("Missing `playlist.xml` file in addon project directory.")
+        
+        with TimeIt():
+            self.api_client.upload_addon(
+                addon_name = addon_name,
+                script_file = self.project_configuration.build_destination,
+                playlist_file = playlist_file,
+                vehicle_files = addon_builder.get_vehicle_files(self.project_configuration.src),
+                allow_update = True
+            )
+        
+        server_ids = self._get_publish_server_ids(server_id)
+        logger.info(f"Adding addon to servers: {server_ids}...")
+        
+        with TimeIt():
+            for server_id in server_ids:
+                if not self.api_client.is_addon_in_server(addon_name, server_id):
+                    logger.info(f"Adding addon to server {server_id}...")
+                    self.api_client.add_addon(addon_name, server_id)
+                else:
+                    logger.info("Addon already in server, no need to add.")
+                    
+                logger.info(f"Refreshing server {server_id}...")
+                self.api_client.refresh_server(server_id)
         
     def sync(self):
         """
