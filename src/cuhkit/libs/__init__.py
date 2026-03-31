@@ -21,3 +21,5 @@ limitations under the License.
 
 # // Imports
 from . import api
+from . import addon_builder
+from . import timeit
