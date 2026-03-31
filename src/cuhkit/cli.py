@@ -22,12 +22,12 @@ limitations under the License.
 # // Imports
 import click
 from pathlib import Path
-from dataclasses import dataclass
 from functools import wraps
 from typing import Callable
 
 from cuhkit import __VERSION__
 from cuhkit import projects
+from cuhkit import cli_context
 from cuhkit.log import set_logging_verbose, logger
 
 # // Main
@@ -42,43 +42,21 @@ def requires_project(project_type: projects.ProjectType | None = None):
     def decorator(function: Callable):
         @wraps(function)
         def wrapper(*args, **kwargs):
-            context = click.get_current_context()
-            cli_context = get_context(context)
+            context = cli_context.get_context()
 
-            if cli_context.project is None:
+            if context.project is None:
                 logger.error("No cuhkit project found in current directory, this command must be run in a cuhkit project directory.")
                 return
             
-            if project_type is not None and cli_context.project.project_type != project_type:
-                logger.error(f"Current cuhkit project is not of required type {project_type}, got {cli_context.project.project_type}.")
+            if project_type is not None and context.project.project_type != project_type:
+                logger.error(f"Current cuhkit project is not of required type {project_type}, got {context.project.project_type}.")
                 return
 
-            return function(*args, **kwargs, project = cli_context.project)
+            return function(*args, **kwargs, project = context.project)
         
         return wrapper
     
     return decorator
-
-@dataclass
-class CLIContext:
-    """
-    Context object for the cuhkit CLI.
-    """
-
-    project: projects.AddonProject | projects.ModProject | None
-    
-def get_context(context: click.Context) -> CLIContext:
-    """
-    Gets the CLI context from a click context.
-    
-    Args:
-        context (click.Context): The click context to get the CLI context from.
-        
-    Returns:
-        CLIContext: The CLI context.
-    """
-
-    return context.obj["context"]
 
 @click.group()
 @click.version_option(__VERSION__)
@@ -90,11 +68,7 @@ def cli(context: click.Context, verbose: bool):
     Main CLI entry point.
     """
     
-    context.ensure_object(dict)
-
-    context.obj["context"] = CLIContext(
-        project = projects.load_project_at_path(Path.cwd()) if projects.does_project_exist_at_path(Path.cwd()) else None
-    )
+    cli_context.setup_context(context)
 
     if verbose:
         set_logging_verbose(verbose)
@@ -138,10 +112,10 @@ def new(name: str, path: Path, project_type: projects.ProjectType):
     logger.info(f"Created cuhkit project at {path}.")
 
 @cli.command()
-@click.pass_context
+@cli_context.pass_context
 @requires_project()
 @click.confirmation_option(prompt = "Are you sure you want to delete this cuhkit project?")
-def delete(context: click.Context, project: projects.Project):
+def delete(context: cli_context.CLIContext, project: projects.Project):
     """
     Deletes a cuhkit project.
     """
@@ -150,20 +124,45 @@ def delete(context: click.Context, project: projects.Project):
     logger.info("Deleted cuhkit project.")
 
 @cli.command()
-@click.pass_context
+@cli_context.pass_context
 @requires_project(projects.ProjectType.ADDON)
-def build(context: click.Context, project: projects.AddonProject):
+def build(context: cli_context.CLIContext, project: projects.AddonProject):
     """
-    Build a cuhkit project.
+    Builds and syncs a cuhkit addon project.
     """
 
     project.build()
-    logger.info("Built cuhkit project.")
+    project.sync()
+    logger.info("Built cuhkit addon project.")
+    
+@cli.command()
+@cli_context.pass_context
+@requires_project(projects.ProjectType.ADDON)
+def sync(context: cli_context.CLIContext, project: projects.AddonProject):
+    """
+    Sync a cuhkit project to Stormworks.
+    Note that the 'build' command also does this, but builds beforehand.
+    """
+
+    project.sync()
+    logger.info("Synced cuhkit addon project.")
+    
+@cli.command()
+@cli_context.pass_context
+@requires_project(projects.ProjectType.ADDON)
+def setup(context: cli_context.CLIContext, project: projects.AddonProject):
+    """
+    Sets up a cuhkit project for the first time.
+    Should only really be used after cloning an existing addon project.
+    """
+
+    project.setup()
+    logger.info("Performed setup with cuhkit addon project.")
 
 @cli.command()
-@click.pass_context
+@cli_context.pass_context
 @requires_project()
-def publish():
+def publish(context: cli_context.CLIContext, project: projects.Project):
     """
     Publish a cuhkit project to cuhHub.
     """
