@@ -32,8 +32,7 @@ from pydantic import (
 
 from cuhkit.exceptions import (
     ProjectNotFoundException,
-    ProjectLoadFailureException,
-    ProjectAlreadyExistsException
+    ProjectLoadFailureException
 )
 
 # // Main
