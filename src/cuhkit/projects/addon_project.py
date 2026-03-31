@@ -23,10 +23,11 @@ limitations under the License.
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 from . import (
     Project,
-    SavedProject,
+    ProjectConfiguration,
     ProjectType,
     does_project_exist_at_path
 )
@@ -35,32 +36,36 @@ from cuhkit.exceptions import (
     ProjectAlreadyExistsException
 )
 
+from cuhkit.libs import addon_builder
+
 # // Main
 __all__ = [
-    "SavedAddonProject",
+    "AddonProjectConfiguration",
     "AddonProject",
     "create_addon_project"
 ]
 
-class SavedAddonProject(SavedProject):
+class AddonProjectConfiguration(ProjectConfiguration):
     """
-    A saved cuhkit addon project.
+    An addon project configuration.
     """
 
     project_type: ProjectType = ProjectType.ADDON
+    build_destination: Path = Path(".build/addon.lua")
+    stormworks_addon_directory: Path = Path(os.environ["APPDATA"]) / "Stormworks" / "data" / "missions"
 
 class AddonProject(Project):
     """
     A cuhkit addon project.
     """
     
-    def __init__(self, name: str, path: str):
+    def __init__(self, name: str, path: Path):
         """
         Initialises cuhkit addon projects.
 
         Args:
             name (str): The name of the addon project.
-            path (str): The path to the addon project.
+            path (Path): The path to the addon project.
         """
 
         super().__init__(
@@ -69,67 +74,76 @@ class AddonProject(Project):
             path = path
         )
         
-    def get_saved_project(self) -> SavedAddonProject:
+        self.project_configuration = self.get_project_configuration()
+        
+    def build(self):
         """
-        Returns a saved cuhkit addon project for this addon project.
+        Builds the addon project.
+        """
+
+        addon_builder.build_addon(self.path, self.project_configuration.build_destination)
+        
+    def get_project_configuration(self) -> AddonProjectConfiguration:
+        """
+        Returns the project configuration.
 
         Returns:
-            SavedAddonProject: The saved cuhkit addon project.
+            AddonProjectConfiguration: The project configuration.
         """
 
-        return SavedAddonProject(
+        return AddonProjectConfiguration(
             name = self.name,
             path = self.path
         )
         
     @staticmethod
-    def get_saved_project_from_content(content: str) -> SavedAddonProject:
+    def get_project_configuration_from_content(content: str) -> AddonProjectConfiguration:
         """
-        Returns a saved cuhkit addon project from the content of a cuhkit project file.
+        Returns a project configuration instance from the content of a project file.
 
         Args:
-            content (str): The content of the cuhkit project file.
+            content (str): The content of the project file.
             
         Returns:
-            SavedAddonProject: The saved cuhkit addon project.
+            AddonProjectConfiguration: The project configuration.
         """
 
-        return SavedAddonProject.model_validate_strings(content)
+        return AddonProjectConfiguration.model_validate_json(content)
     
     @classmethod
-    def from_saved_project(cls, saved_project: SavedAddonProject) -> AddonProject:
+    def from_project_configuration(cls, project_configuration: AddonProjectConfiguration) -> AddonProject:
         """
-        Creates a cuhkit addon project from a saved cuhkit addon project.
+        Creates an addon project from a project configuration.
 
         Args:
-            saved_project (SavedAddonProject): The saved cuhkit addon project to create the cuhkit addon project from.
-            
+            project_configuration (AddonProjectConfiguration): The project configuration to create the cuhkit addon project from.
+                
         Returns:
             AddonProject: The created cuhkit addon project.
         """
         
         return cls(
-            name = saved_project.name,
-            path = saved_project.path
+            name = project_configuration.name,
+            path = project_configuration.path
         )
 
-def create_addon_project(name: str, path: str) -> Project:
+def create_addon_project(name: str, path: Path) -> AddonProject:
     """
     Creates a cuhkit addon project.
 
     Args:
         name (str): The name of the addon project.
-        path (str): The path to the directory to create the addon project in.
+        path (Path): The path to the directory to create the addon project in.
     
     Raises:
         ValueError: If the path is not a directory.
         ProjectAlreadyExistsException: If a cuhkit project already exists at the path.
 
     Returns:
-        Project: The created cuhkit addon project.
+        AddonProject: The created cuhkit addon project.
     """
 
-    if not os.path.isdir(path):
+    if not path.is_dir():
         raise ValueError(f"Path must be a directory: {path}")
     
     if does_project_exist_at_path(path):

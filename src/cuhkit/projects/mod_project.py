@@ -22,11 +22,11 @@ limitations under the License.
 # // Imports
 from __future__ import annotations
 
-import os
+from pathlib import Path
 
 from . import (
     Project,
-    SavedProject,
+    ProjectConfiguration,
     ProjectType,
     does_project_exist_at_path
 )
@@ -37,14 +37,14 @@ from cuhkit.exceptions import (
 
 # // Main
 __all__ = [
-    "SavedModProject",
+    "ModProjectConfiguration",
     "ModProject",
     "create_mod_project"
 ]
 
-class SavedModProject(SavedProject):
+class ModProjectConfiguration(ProjectConfiguration):
     """
-    A saved cuhkit mod project.
+    A mod project configuration.
     """
 
     project_type: ProjectType = ProjectType.MOD
@@ -54,13 +54,13 @@ class ModProject(Project):
     A cuhkit mod project.
     """
     
-    def __init__(self, name: str, path: str):
+    def __init__(self, name: str, path: Path):
         """
         Initialises cuhkit mod projects.
 
         Args:
             name (str): The name of the mod project.
-            path (str): The path to the mod project.
+            path (Path): The path to the mod project.
         """
 
         super().__init__(
@@ -69,67 +69,85 @@ class ModProject(Project):
             path = path
         )
         
-    def get_saved_project(self) -> SavedModProject:
+        self.project_configuration = self.get_project_configuration()
+        
+    def get_project_configuration(self) -> ModProjectConfiguration:
         """
-        Returns a saved cuhkit mod project for this mod project.
+        Returns the project configuration.
 
         Returns:
-            SavedModProject: The saved cuhkit mod project.
+            ModProjectConfiguration: The project configuration.
         """
 
-        return SavedModProject(
+        return ModProjectConfiguration(
             name = self.name,
             path = self.path
         )
         
     @staticmethod
-    def get_saved_project_from_content(content: str) -> SavedModProject:
+    def get_project_configuration_from_content(content: str) -> ModProjectConfiguration:
         """
-        Returns a saved cuhkit mod project from the content of a cuhkit project file.
+        Returns a project configuration instance from the content of a project file.
 
         Args:
             content (str): The content of the cuhkit project file.
             
         Returns:
-            SavedModProject: The saved cuhkit mod project.
+            ModProjectConfiguration: The project configuration.
         """
 
-        return SavedModProject.model_validate_strings(content)
+        return ModProjectConfiguration.model_validate_json(content)
     
     @classmethod
-    def from_saved_project(cls, saved_project: SavedModProject) -> ModProject:
+    def from_project_configuration(cls, project_configuration: ModProjectConfiguration) -> ModProject:
         """
-        Creates a cuhkit mod project from a saved cuhkit mod project.
+        Creates a cuhkit mod project from a project configuration.
 
         Args:
-            saved_project (SavedModProject): The saved cuhkit mod project to create the cuhkit mod project from.
+            project_configuration (ModProjectConfiguration): The project configuration to create the cuhkit mod project from.
             
         Returns:
             ModProject: The created cuhkit mod project.
         """
         
         return cls(
-            name = saved_project.name,
-            path = saved_project.path
+            name = project_configuration.name,
+            path = project_configuration.path
+        )
+    
+    @classmethod
+    def from_project_configuration(cls, project_configuration: ProjectConfiguration) -> ModProject:
+        """
+        Creates a cuhkit mod project from a project configuration.
+
+        Args:
+            project_configuration (ModProjectConfiguration): The project configuration to create the cuhkit mod project from.
+        Returns:
+            ModProject: The created cuhkit mod project.
+        """
+        
+        return cls(
+            name = project_configuration.name,
+            path = project_configuration.path
         )
 
-def create_mod_project(name: str, path: str) -> Project:
+def create_mod_project(name: str, path: Path) -> ModProject:
     """
     Creates a cuhkit mod project.
 
     Args:
         name (str): The name of the mod project.
-        path (str): The path to the directory to create the mod project in.
+        path (Path): The path to the directory to create the mod project in.
         
     Raises:
         ValueError: If the path is not a directory.
         ProjectAlreadyExistsException: If a cuhkit project already exists at the path.
 
     Returns:
-        Project: The created cuhkit mod project.
+        ModProject: The created cuhkit mod project.
     """
 
-    if not os.path.isdir(path):
+    if not path.is_dir():
         raise ValueError(f"Path must be a directory: {path}")
     
     if does_project_exist_at_path(path):
