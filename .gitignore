@@ -8,4 +8,4 @@ dist
 
 # Testing
 tests/dump
-test*
+test_proj
