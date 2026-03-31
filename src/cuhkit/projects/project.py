@@ -73,7 +73,7 @@ class ProjectConfiguration(BaseModel):
         if self.src is not None:
             return
         
-        self.src = self.path
+        self.src = self.path / "src"
 
 class Project():
     """
