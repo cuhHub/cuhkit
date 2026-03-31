@@ -24,6 +24,7 @@ from pathlib import Path
 
 __VERSION__ = "0.0.0"
 CUHKIT_DATA_PATH = Path.home() / ".cuhkit"
+CUHKIT_PACKAGE_PATH = Path(__file__).parent
 
 from . import exceptions
 from . import log
