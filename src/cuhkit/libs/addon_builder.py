@@ -315,7 +315,7 @@ def build_addon(directory: Path, output_file: Path):
     logger.debug(f"addon_builder: Writing build to output path: {output_file}")
     output_file.write_text(content)
     
-def _get_vehicle_files(directory: Path) -> list[Path]:
+def get_vehicle_files(directory: Path) -> list[Path]:
     """
     Returns all vehicle files in the given directory.
 
@@ -353,12 +353,12 @@ def _copy_stormworks_to_addon(addon_project_directory: Path, stormworks_addon_di
     
     logger.debug(f"addon_builder: Removing vehicles from addon project (will be re-added)")
 
-    for vehicle_file in _get_vehicle_files(addon_project_directory):
+    for vehicle_file in get_vehicle_files(addon_project_directory):
         vehicle_file.unlink()
     
     logger.debug(f"addon_builder: Copying vehicles from Stormworks addon to addon project")
 
-    for vehicle_file in _get_vehicle_files(stormworks_addon_directory):
+    for vehicle_file in get_vehicle_files(stormworks_addon_directory):
         shutil.copy2(vehicle_file, addon_project_directory)
         
     logger.debug(f"addon_builder: Copying playlist from Stormworks addon to addon project")
@@ -381,7 +381,7 @@ def setup_addon(addon_project_directory: Path, addon_code_file: Path, stormworks
     logger.debug(f"addon_builder: Copying vehicles to Stormworks addon")
     stormworks_addon_directory.mkdir(parents = True, exist_ok = True)
     
-    for vehicle_file in _get_vehicle_files(addon_project_directory):
+    for vehicle_file in get_vehicle_files(addon_project_directory):
         shutil.copy2(vehicle_file, stormworks_addon_directory)
         
     logger.debug(f"addon_builder: Copying playlist to Stormworks addon")
