@@ -35,6 +35,9 @@ from cuhkit.exceptions import (
     ProjectLoadFailureException
 )
 
+from cuhkit.libs.api import Client
+from cuhkit.credentials import credentials
+
 # // Main
 __all__ = [
     "ProjectType",
@@ -93,6 +96,8 @@ class Project():
         self.project_type = project_type
         self.path = path.resolve()
         self.project_configuration = None
+        
+        self.api_client = Client(token = credentials.api_token) if credentials.api_token is not None else None
 
     def get_path_to_project_file(self) -> Path:
         """
