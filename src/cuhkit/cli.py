@@ -28,7 +28,6 @@ from typing import Callable
 
 from cuhkit import __VERSION__
 from cuhkit import projects
-from cuhkit.libs.timeit import TimeIt
 from cuhkit.log import set_logging_verbose, logger
 
 # // Main
@@ -158,9 +157,7 @@ def build(context: click.Context, project: projects.AddonProject):
     Build a cuhkit project.
     """
 
-    with TimeIt():
-        project.build()
-
+    project.build()
     logger.info("Built cuhkit project.")
 
 @cli.command()
