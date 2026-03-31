@@ -27,7 +27,11 @@ from functools import wraps
 from pathlib import Path
 
 from cuhkit import projects
-from cuhkit import credentials
+
+from cuhkit.credentials import (
+    credentials,
+    Credentials
+)
 
 # // Main
 def pass_context(function: Callable):
@@ -51,21 +55,8 @@ class CLIContext:
     """
 
     project: projects.AddonProject | projects.ModProject | None
-    credentials_holder: credentials.CredentialsHolder
-    
-    def get_credentials(self, use_debug: bool = False) -> credentials.Credentials:
-        """
-        Returns the credentials, using debug credentials if `use_debug` is True. 
+    credentials: Credentials
 
-        Args:
-            use_debug (bool, optional): Whether or not to use debug credentials. Defaults to False.
-
-        Returns:
-            credentials.Credentials: The credentials.
-        """
-
-        return self.credentials_holder.get_credentials(credentials.CredentialsType.DEBUG if use_debug else credentials.CredentialsType.NORMAL)
-    
 def setup_context(context: click.Context):
     """
     Sets up the click context.
@@ -78,7 +69,7 @@ def setup_context(context: click.Context):
 
     context.obj["context"] = CLIContext(
         project = projects.load_project_at_path(Path.cwd()) if projects.does_project_exist_at_path(Path.cwd()) else None,
-        credentials_holder = credentials.get_credentials_holder()
+        credentials = credentials
     )
     
 def get_context() -> CLIContext:

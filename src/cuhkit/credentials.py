@@ -25,7 +25,6 @@ from pydantic import (
     UUID4
 )
 
-from enum import Enum
 from pathlib import Path
 
 from cuhkit import CUHKIT_DATA_PATH
@@ -34,85 +33,46 @@ from cuhkit.log import logger
 # // Main
 CREDENTIALS_PATH = CUHKIT_DATA_PATH / "credentials.json"
 
-class CredentialsType(Enum):
-    """
-    Represents the type of credentials.
-    """
-    
-    DEBUG = "debug"
-    NORMAL = "normal"
-
 class Credentials(BaseModel):
     """
     Base class for credentials
     """
     
     api_token: UUID4 | None = None
-    credentials_type: CredentialsType
-    
-class NormalCredentials(Credentials):
-    """
-    Credentials for normal contexts (e.g. publishing to production)
-    """
-    
-    credentials_type: CredentialsType = CredentialsType.NORMAL
-    
-class DebugCredentials(Credentials):
-    """
-    Credentials for debug contexts (e.g. local development)
-    """
-    
-    credentials_type: CredentialsType = CredentialsType.DEBUG
-    
-class CredentialsHolder(BaseModel):
-    """
-    Model to store credentials of all types.
-    """
-    
-    credentials: dict[CredentialsType, Credentials] = {
-        CredentialsType.NORMAL: NormalCredentials(),
-        CredentialsType.DEBUG: DebugCredentials()
-    }
-
     path: Path
-    
-    def get_credentials(self, credentials_type: CredentialsType = CredentialsType.NORMAL) -> Credentials:
-        """
-        Gets the credentials for the given type.
-        
-        Args:
-            credentials_type (CredentialsType): The type of credentials to get.
-        
-        Returns:
-            Credentials: The credentials for the given type.
-        """
-        
-        return self.credentials[credentials_type]
-    
+
     def save(self):
         """
-        Save credentials to the file.
+        Save the credentials.
         """
         
         logger.info(f"Saving credentials to {self.path}")
         self.path.write_text(self.model_dump_json(indent = 3))
+        
+    def remove(self):
+        """
+        Remove the credentials.
+        """
+        
+        logger.info(f"Removing credentials from {self.path}")
+        self.path.unlink()
     
     @classmethod
     def create_new(cls, path: Path):
         """
-        Creates a new credentials holder, saving it automatically.
+        Creates new credentials, saving it automatically.
         
         Args:
             path (Path): The path to the credentials file.
         """
         
-        credentials_holder = cls(path = path)
-        credentials_holder.save()
+        credentials = cls(path = path)
+        credentials.save()
         
-        return credentials_holder
+        return credentials
     
     @classmethod
-    def try_load(cls, path: Path) -> CredentialsHolder:
+    def try_load(cls, path: Path) -> Credentials:
         """
         Loads credentials from the file, or creating new and saving if it doesn't exist.
         
@@ -120,7 +80,7 @@ class CredentialsHolder(BaseModel):
             path (Path): The path to the credentials file.
         
         Returns:
-            CredentialsHolder: The loaded credentials.
+            Credentials: The loaded credentials.
         """
         
         if not path.exists():
@@ -132,20 +92,15 @@ class CredentialsHolder(BaseModel):
         content = path.read_text()
         return cls.model_validate_json(content)
     
-def get_credentials_holder() -> CredentialsHolder:
+def get_credentials() -> Credentials:
     """
     Loads credentials from a file.
     
     Returns:
-        CredentialsHolder: The loaded credentials.
+        Credentials: The loaded credentials.
     """
     
     CREDENTIALS_PATH.parent.mkdir(parents = True, exist_ok = True)
-    return CredentialsHolder.try_load(CREDENTIALS_PATH)
+    return Credentials.try_load(CREDENTIALS_PATH)
 
-def remove_credentials():
-    """
-    Removes the credentials file.
-    """
-    
-    CREDENTIALS_PATH.unlink(missing_ok = True)
+credentials = get_credentials()
