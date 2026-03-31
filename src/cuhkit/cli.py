@@ -27,6 +27,7 @@ from typing import Callable
 
 from cuhkit import __VERSION__
 from cuhkit import projects
+from cuhkit import credentials
 from cuhkit import cli_context
 from cuhkit.log import set_logging_verbose, logger
 
@@ -58,6 +59,31 @@ def requires_project(project_type: projects.ProjectType | None = None):
     
     return decorator
 
+def requires_api_token():
+    """
+    Decorator for click commands that require an API token.
+    """
+
+    def decorator(function: Callable):
+        @wraps(function)
+        @click.option(
+            "--debug", "-d", "use_debug_credentials",
+            is_flag = True,
+            help = "Whether or not to use debug credentials."
+        )
+        def wrapper(use_debug_credentials: bool, *args, **kwargs):
+            credentials = cli_context.get_context().get_credentials(use_debug_credentials)
+
+            if credentials.api_token is None:
+                logger.error("No API token found in credentials. Please set one using the `set-api-token` command.")
+                return
+            
+            return function(*args, **kwargs, api_token = credentials.api_token)
+        
+        return wrapper
+    
+    return decorator
+
 @click.group()
 @click.version_option(__VERSION__)
 @click.help_option()
@@ -68,12 +94,12 @@ def cli(context: click.Context, verbose: bool):
     Main CLI entry point.
     """
     
+    logger.info("cuhkit - A CLI-oriented Python package for handling cuhHub Stormworks projects (addons/mods).")
+    
     cli_context.setup_context(context)
 
     if verbose:
         set_logging_verbose(verbose)
-
-    logger.info("cuhkit - A CLI-oriented Python package for handling cuhHub Stormworks projects (addons/mods).")
 
 @cli.command()
 @click.argument(
@@ -89,7 +115,7 @@ def cli(context: click.Context, verbose: bool):
 )
 @click.option(
     "--type", "-t", "project_type",
-    type = click.Choice(projects.ProjectType),
+    type = click.Choice(projects.ProjectType, case_sensitive = False),
     required = True,
     help = "The type of the project to create."
 )
@@ -162,9 +188,46 @@ def setup(context: cli_context.CLIContext, project: projects.AddonProject):
 @cli.command()
 @cli_context.pass_context
 @requires_project()
-def publish(context: cli_context.CLIContext, project: projects.Project):
+@requires_api_token()
+def publish(context: cli_context.CLIContext, project: projects.Project, api_token: str):
     """
     Publish a cuhkit project to cuhHub.
     """
+    
+    print(api_token)
 
-    pass
+    # todo: publishing lgoic
+    logger.info("Published cuhkit project.")
+
+@cli.command()
+@cli_context.pass_context
+@click.argument(
+    "api_token",
+    type = click.UUID,
+    required = True
+)
+@click.option(
+    "--cred", "-c", "credentials_type",
+    type = click.Choice(credentials.CredentialsType, case_sensitive = False),
+    required = True,
+    help = "The type of credentials to update."
+)
+def set_api_token(context: cli_context.CLIContext, api_token: str, credentials_type: credentials.CredentialsType):
+    """
+    Sets the cuhHub API token in credentials.
+    """
+
+    credentials = context.credentials_holder.get_credentials(credentials_type)
+    credentials.api_token = api_token
+    
+    context.credentials_holder.save()
+    
+@cli.command()
+@click.confirmation_option(prompt = "Are you sure you want to delete your cuhkit credentials (API token, etc.)?")
+def delete_credentials():
+    """
+    Deletes cuhkit credentials.
+    """
+
+    credentials.remove_credentials()
+    logger.info("Deleted cuhkit credentials.")
