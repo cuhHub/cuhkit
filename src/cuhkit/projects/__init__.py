@@ -23,3 +23,49 @@ limitations under the License.
 from .project import *
 from .mod_project import *
 from .addon_project import *
+
+import json
+from pathlib import Path
+
+from cuhkit.exceptions import (
+    ProjectNotFoundException,
+    ProjectLoadFailureException
+)
+
+# // Main
+def load_project_at_path(path: Path) -> AddonProject | ModProject:
+    """
+    Loads a cuhkit project at the specified path.
+    
+    Args:
+        path (Path): The directory the project is in, or path to the project file.
+        
+    Raises:
+        ProjectNotFoundException: If no cuhkit project file is found at the path.
+        ProjectLoadFailureException: If the cuhkit project file could not be loaded.
+        
+    Returns:
+        AddonProject | ModProject: The loaded project.
+    """
+
+    if not does_project_exist_at_path(path):
+        raise ProjectNotFoundException(path)
+    
+    file_path = get_project_file_path(path)
+    
+    with open(file_path, "r") as project_file:
+        try:
+            json_data = json.loads(project_file.read())
+        except json.JSONDecodeError as exception:
+            raise ProjectLoadFailureException(f"Failed to load cuhkit project at path (read or JSON decode error): {file_path}") from exception
+        
+    try:
+        raw_project_type = json_data.get("project_type")
+        project_type = ProjectType(raw_project_type)
+    except ValueError as exception:
+        raise ProjectLoadFailureException(f"Failed to load cuhkit project at path (invalid project type, got: {raw_project_type}): {file_path}") from exception
+
+    if project_type == ProjectType.ADDON:
+        return AddonProject.from_path(path)
+    elif project_type == ProjectType.MOD:
+        return ModProject.from_path(path)
