@@ -99,10 +99,10 @@ class AddonProject(Project):
         Copies over the addon template to the project.
         """
         
-        logger.info(f"Copying over addon template ({ADDON_TEMPLATE_PATH}) to {self.project_configuration.src}...")
-        shutil.copytree(ADDON_TEMPLATE_PATH, self.project_configuration.src, dirs_exist_ok = True)
+        logger.info(f"Copying over addon template ({ADDON_TEMPLATE_PATH}) to {self.project_configuration.path}...")
+        shutil.copytree(ADDON_TEMPLATE_PATH, self.project_configuration.path, dirs_exist_ok = True)
         
-        intellisense_file = self.project_configuration.src / "intellisense.lua"
+        intellisense_file = self.project_configuration.path / "intellisense.lua"
         intellisense_file.write_text(requests.get(INTELLISENSE_GITHUB_URL).text)
         
     def first_time_setup(self):
