@@ -119,7 +119,7 @@ class Project():
         Saves this cuhkit project to a project configuration file.
         """
         
-        self.get_path_to_project_file().write_text(self.project_configuration.model_dump_json(indent = 7))
+        self.get_path_to_project_file().write_text(self.project_configuration.model_dump_json(indent = 3))
             
     def delete(self):
         """
