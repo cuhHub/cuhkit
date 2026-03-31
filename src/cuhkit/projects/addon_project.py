@@ -37,6 +37,8 @@ from cuhkit.exceptions import (
 )
 
 from cuhkit.libs import addon_builder
+from cuhkit.libs.timeit import TimeIt
+from cuhkit.log import logger
 
 # // Main
 __all__ = [
@@ -52,7 +54,7 @@ class AddonProjectConfiguration(ProjectConfiguration):
 
     project_type: ProjectType = ProjectType.ADDON
     build_destination: Path = Path(".build/addon.lua")
-    stormworks_addon_directory: Path = Path(os.environ["APPDATA"]) / "Stormworks" / "data" / "missions"
+    stormworks_addons_path: Path = Path(os.environ["APPDATA"]) / "Stormworks" / "data" / "missions"
 
 class AddonProject(Project):
     """
@@ -76,12 +78,41 @@ class AddonProject(Project):
         
         self.project_configuration = self.get_project_configuration()
         
+    def get_stormworks_addon_directory(self) -> Path:
+        """
+        Returns the Stormworks addon path for this project.
+
+        Returns:
+            Path: The path to the Stormworks addon.
+        """
+
+        return self.project_configuration.stormworks_addons_path / self.name
+         
     def build(self):
         """
         Builds the addon project.
+        
+        Raises:
+            FileNotFoundError: If playlist.xml file does not exist ina ddon directory
         """
 
-        addon_builder.build_addon(self.path, self.project_configuration.build_destination)
+        logger.info(f"Building .lua files to {self.project_configuration.build_destination}...")       
+
+        with TimeIt(): 
+            addon_builder.build_addon(self.project_configuration.src, self.project_configuration.build_destination)
+        
+        logger.info(f"Copying to game ({self.get_stormworks_addon_directory()})...")
+        
+        try:
+            with TimeIt():
+                addon_builder.copy_addon(
+                    addon_directory = self.project_configuration.src,
+                    script_file = self.project_configuration.build_destination,
+                    destination = self.get_stormworks_addon_directory()
+                )
+        except FileNotFoundError as exception:
+            logger.error(f"Failed to copy addon to game, got exception: {exception}")
+            logger.info("This may be due to a missing `playlist.xml` file. Please set up this addon project first to try and automatically create the `playlist.xml` file, or manually create one if not doable.")
         
     def get_project_configuration(self) -> AddonProjectConfiguration:
         """
