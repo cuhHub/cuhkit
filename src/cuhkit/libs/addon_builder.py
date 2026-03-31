@@ -315,47 +315,104 @@ def build_addon(directory: Path, output_file: Path):
     logger.debug(f"addon_builder: Writing build to output path: {output_file}")
     output_file.write_text(content)
     
-def _get_vehicle_files(addon_directory: Path) -> list[Path]:
+def _get_vehicle_files(directory: Path) -> list[Path]:
     """
-    Returns all vehicle files in the addon directory.
+    Returns all vehicle files in the given directory.
 
     Args:
-        addon_directory (Path): The directory to get the vehicle files from.
+        directory (Path): The directory to get the vehicle files from.
 
     Returns:
-        list[Path]: The list of vehicle files in the addon directory.
+        list[Path]: The list of vehicle files in the directory.
     """
     
-    return list(addon_directory.glob("vehicle_*.xml"))
-    
-def copy_addon(addon_directory: Path, script_file: Path, destination: Path):
+    return list(directory.glob("vehicle_*.xml"))
+
+def _copy_stormworks_to_addon(addon_project_directory: Path, stormworks_addon_directory: Path):
     """
-    Copies the addon (script.lua, playlist.xml and all vehicle files) to the destination path.
+    Copies down necessary files from Stormworks addon directory to addon project directory (playlist, vehicles, etc.).
 
     Args:
-        addon_directory (Path): The directory to copy the addon from.
-        script_file (Path): The script file to copy the addon to.
-        destination (Path): The destination path to copy the addon to.
+        addon_project_directory (Path): The addon project directory.
+        stormworks_addon_directory (Path): The path of the Stormworks addon.
+        
+    Raises:
+        ValueError: If the provided Stormworks addon directory does not exist.
+        FileNotFoundError: If the addon playlist file does not exist in the Stormworks addon directory.
+    """
+    
+    if not stormworks_addon_directory.exists():
+        raise ValueError("Bad `stormworks_addon_directory`. Directory does not exist.")
+    
+    playlist_file = stormworks_addon_directory / "playlist.xml"
+
+    if not playlist_file.exists():
+        raise FileNotFoundError("Missing `playlist.xml` file in Stormworks addon directory.")
+    
+    shutil.copy2(playlist_file, addon_project_directory)
+    
+    logger.debug(f"addon_builder: Removing vehicles from addon project (will be re-added)")
+
+    for vehicle_file in _get_vehicle_files(addon_project_directory):
+        vehicle_file.unlink()
+    
+    logger.debug(f"addon_builder: Copying vehicles from Stormworks addon to addon project")
+
+    for vehicle_file in _get_vehicle_files(stormworks_addon_directory):
+        shutil.copy2(vehicle_file, addon_project_directory)
+        
+    logger.debug(f"addon_builder: Copying playlist from Stormworks addon to addon project")
+    
+def setup_addon(addon_project_directory: Path, addon_code_file: Path, stormworks_addon_directory: Path):
+    """
+    Sets up an addon project by copying files that should be in Stormworks addon directory from the addon project directory.
+    This should be used to set up an addon project for the first time after cloning it, otherwise just create an addon in-game
+    with the same name as the addon project.
+
+    Args:
+        addon_project_directory (Path): The addon project directory.
+        addon_code_file (Path): The path to the full addon code for the Stormworks addon.
+        stormworks_addon_directory (Path): The path of the Stormworks addon.
+        
+    Raises:
+        FileNotFoundError: If the addon playlist file does not exist in the addon directory.
+    """
+    
+    logger.debug(f"addon_builder: Copying vehicles to Stormworks addon")
+    stormworks_addon_directory.mkdir(parents = True, exist_ok = True)
+    
+    for vehicle_file in _get_vehicle_files(addon_project_directory):
+        shutil.copy2(vehicle_file, stormworks_addon_directory)
+        
+    logger.debug(f"addon_builder: Copying playlist to Stormworks addon")
+    playlist_file = addon_project_directory / "playlist.xml"
+
+    if not playlist_file.exists():
+        raise FileNotFoundError("Missing `playlist.xml` file in addon project directory.")
+    
+    shutil.copy2(playlist_file, stormworks_addon_directory)
+    
+    logger.debug(f"addon_builder: Copying addon code to Stormworks addon")
+    shutil.copy2(addon_code_file, stormworks_addon_directory / "script.lua")
+    
+def sync_addon(addon_project_directory: Path, addon_code_file: Path, stormworks_addon_directory: Path):
+    """
+    Syncs an addon with Stormworks so it can be used in-game.
+
+    Args:
+        addon_project_directory (Path): The addon project directory.
+        addon_code_file (Path): The path to the full addon code for the Stormworks addon.
+        stormworks_addon_directory (Path): The path of the Stormworks addon.
         
     Raises:
         FileNotFoundError: If an addon playlist file does not exist in the addon directory.
+        ValueError: If the provided Stormworks addon directory does not exist.
     """
     
-    playlist_file = addon_directory / "playlist.xml"
+    if not stormworks_addon_directory.exists():
+        raise ValueError("Bad `stormworks_addon_directory`. Directory does not exist.")
     
-    if not playlist_file:
-        raise FileNotFoundError(f"Could not find playlist.xml in addon directory: {addon_directory}")
+    logger.debug(f"addon_builder: Copying addon code to Stormworks addon")
+    shutil.copy2(addon_code_file, stormworks_addon_directory / "script.lua")
     
-    vehicle_files = _get_vehicle_files(addon_directory)
-    
-    destination.mkdir(parents = True, exist_ok = True)
-
-    logger.debug(f"addon_builder: Copying playlist to destination")
-    shutil.copy2(playlist_file, destination / "playlist.xml")
-    
-    logger.debug(f"addon_builder: Copying script to destination")
-    shutil.copy2(script_file, destination / "script.lua")
-    
-    for vehicle_file in vehicle_files:
-        logger.debug(f"addon_builder: Copying vehicle file ({vehicle_file.name}) to destination")
-        shutil.copy2(vehicle_file, destination / vehicle_file.name)
+    _copy_stormworks_to_addon(addon_project_directory, stormworks_addon_directory)
