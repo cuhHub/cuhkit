@@ -22,7 +22,7 @@ limitations under the License.
 # // Imports
 from __future__ import annotations
 
-import os
+from pathlib import Path
 from enum import Enum
 
 from pydantic import (
@@ -39,8 +39,9 @@ from cuhkit.exceptions import (
 # // Main
 __all__ = [
     "ProjectType",
-    "SavedProject",
+    "ProjectConfiguration",
     "Project",
+    "get_project_file_path",
     "does_project_exist_at_path"
 ]
 
@@ -52,108 +53,117 @@ class ProjectType(Enum):
     ADDON = "addon"
     MOD = "mod"
 
-class SavedProject(BaseModel):
+class ProjectConfiguration(BaseModel):
     """
-    A saved cuhkit project.
+    A base cuhkit project configuration.
     """
 
     name: str
     project_type: ProjectType
-    path: str
+    path: Path
+    src: Path = None
+    
+    def model_post_init(self, context = None):
+        """
+        Callback for model post initialisation.
+        """
+        
+        if self.src is not None:
+            return
+        
+        self.src = self.path
 
 class Project():
     """
-    A cuhkit project.
+    A base cuhkit project.
     """
     
     CUHKIT_PROJECT_FILE_NAME = ".cuhkitproj.json"
     
-    def __init__(self, name: str, project_type: ProjectType, path: str):
+    def __init__(self, name: str, project_type: ProjectType, path: Path):
         """
         Initialises cuhkit projects.
 
         Args:
             name (str): The name of the project.
             project_type (ProjectType): The type of the project.
-            path (str): The path to the project.
-            
-        Raises:
-            ProjectAlreadyExistsException: If a cuhkit project already exists at the
+            path (Path): The path to the project.
         """
-        
-        if does_project_exist_at_path(path):
-            raise ProjectAlreadyExistsException(f"A cuhkit project already exists at path: {path}")
-        
+
         self.name = name
         self.project_type = project_type
-        self.path = os.path.abspath(path)
-        self.saved_project = self.get_saved_project()
-        
-        self.save()
-        
-    def _get_path_to_project_file(self) -> str:
+        self.path = path.resolve()
+        self.project_configuration = None
+
+    def get_path_to_project_file(self) -> Path:
         """
         Gets the path to the cuhkit project file for this project.
 
         Returns:
-            str: The path to the cuhkit project file for this project.
+            Path: The path to the cuhkit project file for this project.
         """
 
-        return os.path.join(self.path, self.CUHKIT_PROJECT_FILE_NAME)
+        return get_project_file_path(self.path)
         
-    def get_saved_project(self) -> SavedProject:
+    def get_project_configuration(self) -> ProjectConfiguration:
         """
-        Returns a saved cuhkit project for this project.
+        Returns the project configuration for this project.
 
         Returns:
-            SavedProject: The saved cuhkit project.
+            ProjectConfiguration: The project configuration.
         """
 
-        raise NotImplementedError("Project.get_saved_project is not implemented.")
+        raise NotImplementedError("Project.get_project_configuration is not implemented.")
     
     def save(self):
         """
-        Saves this cuhkit project.
+        Saves this cuhkit project to a project configuration file.
         """
         
-        with open(self._get_path_to_project_file(), "w") as file:
-            file.write(self.saved_project.model_dump_json(indent = 7))
+        self.get_path_to_project_file().write_text(self.project_configuration.model_dump_json(indent = 7))
+            
+    def delete(self):
+        """
+        Deletes the cuhkit project configuration file.
+        """
+
+        self.get_path_to_project_file().unlink(missing_ok = True)
             
     @staticmethod
-    def get_saved_project_from_content(content: str) -> SavedProject:
+    def get_project_configuration_from_content(content: str) -> ProjectConfiguration:
         """
-        Returns a saved cuhkit project from the content of a cuhkit project file.
+        Returns a project configuration from the content of a cuhkit project file.
 
         Args:
             content (str): The content of the cuhkit project file.
             
         Returns:
-            SavedProject: The saved cuhkit project.
+            ProjectConfiguration: The project configuration.
         """
         
-        raise NotImplementedError("Project.get_saved_project_from_content is not implemented.")
+        raise NotImplementedError("Project.get_project_configuration_from_content is not implemented.")
             
     @classmethod
-    def from_saved_project(cls, saved_project: SavedProject) -> Project:
+    def from_project_configuration(cls, project_configuration: ProjectConfiguration) -> Project:
         """
-        Creates a cuhkit project from a saved cuhkit project.
+        Creates a cuhkit project from a project configuration.
 
         Args:
-            saved_project (SavedProject): The saved cuhkit project to create the cuhkit project from.
+            project_configuration (ProjectConfiguration): The project configuration to create the cuhkit project from.
             
         Returns:
             Project: The created cuhkit project.
         """
 
-        raise NotImplementedError("Project.from_saved_project is not implemented.")
+        raise NotImplementedError("Project.from_project_configuration is not implemented.")
     
     @classmethod
-    def from_path(cls, path: str):
+    def from_path(cls, path: Path) -> Project:
         """
         Creates a cuhkit project from a path to the directory of a cuhkit project.
         
         Args:
-            path (str): The path to the directory of the cuhkit project.
+            path (Path): The path to the directory of the cuhkit project.
             
         Raises:
             ProjectNotFoundException: If no cuhkit project file is found at the path.
@@ -163,35 +173,47 @@ class Project():
             Project: The created cuhkit project.
         """
         
-        project_file_path = os.path.join(path, cls.CUHKIT_PROJECT_FILE_NAME) if os.path.isdir(path) else path
+        project_file_path = get_project_file_path(path) if path.is_dir() else path
         
         if not does_project_exist_at_path(project_file_path):
             raise ProjectNotFoundException(f"No cuhkit project file found at path: {project_file_path}")
         
-        with open(project_file_path, "r") as file:
-            content = file.read()
+        content = project_file_path.read_text()
             
         try:
-            saved_project = cls.get_saved_project_from_content(content)
+            project_configuration = cls.get_project_configuration_from_content(content)
         except ValidationError as exception:
             raise ProjectLoadFailureException(f"Failed to load cuhkit project from file at path: {project_file_path}") from exception
 
-        return cls.from_saved_project(saved_project)
+        return cls.from_project_configuration(project_configuration)
 
-def does_project_exist_at_path(path: str) -> bool:
+def get_project_file_path(path: Path) -> Path:
+    """
+    Gets the path to the cuhkit project file in a directory.
+
+    Args:
+        path (Path): The directory to get the cuhkit project file path in.
+
+    Returns:
+        Path: The path to the cuhkit project file in the directory.
+    """
+
+    return path / Project.CUHKIT_PROJECT_FILE_NAME
+
+def does_project_exist_at_path(path: Path) -> bool:
     """
     Checks if a cuhkit project exists at a path.
 
     Args:
-        path (str): The path to check for a cuhkit project.
+        path (Path): The path to check for a cuhkit project.
 
     Returns:
         bool: True if a cuhkit project exists at the path, False otherwise.
     """
     
-    if os.path.isfile(path):
-        return os.path.basename(path) == Project.CUHKIT_PROJECT_FILE_NAME
-    elif os.path.isdir(path):
-        return os.path.isfile(os.path.join(path, Project.CUHKIT_PROJECT_FILE_NAME))
+    if path.is_file():
+        return path.name == Project.CUHKIT_PROJECT_FILE_NAME
+    elif path.is_dir():
+        return get_project_file_path(path).is_file()
 
     return False
