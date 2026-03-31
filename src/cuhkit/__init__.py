@@ -27,4 +27,5 @@ from . import log
 from . import libs
 from . import projects
 
+from . import cli_context
 from .cli import cli
