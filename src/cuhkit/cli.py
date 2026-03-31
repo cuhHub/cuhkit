@@ -27,7 +27,6 @@ from typing import Callable
 
 from cuhkit import __VERSION__
 from cuhkit import projects
-from cuhkit import credentials
 from cuhkit import cli_context
 from cuhkit.log import set_logging_verbose, logger
 
@@ -54,31 +53,6 @@ def requires_project(project_type: projects.ProjectType | None = None):
                 return
 
             return function(*args, **kwargs, project = context.project)
-        
-        return wrapper
-    
-    return decorator
-
-def requires_api_token():
-    """
-    Decorator for click commands that require an API token.
-    """
-
-    def decorator(function: Callable):
-        @wraps(function)
-        @click.option(
-            "--debug", "-d", "use_debug_credentials",
-            is_flag = True,
-            help = "Whether or not to use debug credentials."
-        )
-        def wrapper(use_debug_credentials: bool, *args, **kwargs):
-            credentials = cli_context.get_context().get_credentials(use_debug_credentials)
-
-            if credentials.api_token is None:
-                logger.error("No API token found in credentials. Please set one using the `set-api-token` command.")
-                return
-            
-            return function(*args, **kwargs, api_token = credentials.api_token)
         
         return wrapper
     
@@ -188,7 +162,6 @@ def setup(context: cli_context.CLIContext, project: projects.AddonProject):
 @cli.command()
 @cli_context.pass_context
 @requires_project()
-@requires_api_token()
 @click.option(
     "--server", "-s", "server_id",
     type = int,
@@ -201,15 +174,19 @@ def setup(context: cli_context.CLIContext, project: projects.AddonProject):
     help = "Whether or not to publish as a development build."
 )
 @click.confirmation_option(prompt = "Are you sure you want to publish this cuhkit project?")
-def publish(context: cli_context.CLIContext, project: projects.Project, api_token: str, server_id: int, is_dev: bool):
+def publish(context: cli_context.CLIContext, project: projects.Project, server_id: int, is_dev: bool):
     """
     Publish a cuhkit project to cuhHub.
     """
     
-    print(api_token)
-
-    # todo: publishing logic
-    logger.info("Published cuhkit project.")
+    if isinstance(project, projects.AddonProject):
+        try:
+            project.publish(server_id, is_dev)
+            logger.info("Published cuhkit addon project.")
+        except ValueError:
+            logger.error("No API token found in credentials. Please set one using the `set-api-token` command.")
+        except FileNotFoundError:
+            logger.error("Missing `playlist.xml` file in addon project directory. Try building the addon or running first-time setup. If neither work, please manually create one.")
 
 @cli.command()
 @cli_context.pass_context
@@ -218,28 +195,21 @@ def publish(context: cli_context.CLIContext, project: projects.Project, api_toke
     type = click.UUID,
     required = True
 )
-@click.option(
-    "--cred", "-c", "credentials_type",
-    type = click.Choice(credentials.CredentialsType, case_sensitive = False),
-    required = True,
-    help = "The type of credentials to update."
-)
-def set_api_token(context: cli_context.CLIContext, api_token: str, credentials_type: credentials.CredentialsType):
+def set_api_token(context: cli_context.CLIContext, api_token: str):
     """
     Sets the cuhHub API token in credentials.
     """
 
-    credentials = context.credentials_holder.get_credentials(credentials_type)
-    credentials.api_token = api_token
-    
-    context.credentials_holder.save()
+    context.credentials.api_token = api_token
+    context.credentials.save()
     
 @cli.command()
+@cli_context.pass_context
 @click.confirmation_option(prompt = "Are you sure you want to delete your cuhkit credentials (API token, etc.)?")
-def delete_credentials():
+def delete_credentials(context: cli_context.CLIContext):
     """
     Deletes cuhkit credentials.
     """
 
-    credentials.remove_credentials()
+    context.credentials.remove()
     logger.info("Deleted cuhkit credentials.")
