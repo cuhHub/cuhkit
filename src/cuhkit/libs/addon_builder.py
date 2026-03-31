@@ -21,6 +21,7 @@ limitations under the License.
 
 # // Imports
 import shutil
+import requests
 from pathlib import Path
 
 from pydantic import (
@@ -28,10 +29,19 @@ from pydantic import (
     Field
 )
 
+from cuhkit import __VERSION__
 from cuhkit.log import logger
 
 # // Main
 METADATA_FILE_NAME = ".build.json"
+
+class WebImport(BaseModel):
+    """
+    A model for a web import.
+    """
+    
+    url: str
+    name: str
 
 class BuilderMetadata(BaseModel):
     """
@@ -40,7 +50,7 @@ class BuilderMetadata(BaseModel):
     
     build_order: list[Path] | None = None
     ignore: list[Path] = Field(default_factory = list)
-    import_web: list[str] = Field(default_factory = list)
+    import_web: list[WebImport] = Field(default_factory = list)
     import_local: list[Path] = Field(default_factory = list)
     
     def resolve_build_order(self, root: Path) -> list[Path]:
@@ -129,15 +139,46 @@ class BuilderMetadata(BaseModel):
             else:
                 shutil.copy2(path, destination_directory)
                 
+    def _handle_web_import(self, web_import: WebImport, destination_directory: Path):
+        """
+        Handles a web import.
+
+        Args:
+            web_import (WebImport): The web import to handle.
+            destination_directory (Path): The directory to import the web file to.
+        """
+        
+        logger.debug(f"addon_builder: Importing web file at URL: {web_import.url} (name: {web_import.name})")
+        
+        try:
+            response = requests.get(web_import.url, headers = {"User-Agent": f"cuhkit/{__VERSION__}"})
+            response.raise_for_status()
+        except requests.exceptions.RequestException as exception:
+            logger.error(f"Failed to import web file/directory at URL: {web_import.url} (request error, exception: {exception})")
+            return
+        except requests.exceptions.HTTPError as exception:
+            logger.error(f"Failed to import web file/directory at URL: {web_import.url} (HTTP error (bad status code), exception: {exception})")
+            return
+        
+        content_type = response.headers.get("content-type")
+        
+        if content_type is None or content_type.find("text/plain") == -1:
+            logger.error(f"Failed to import web file/directory at URL: {web_import.url} (content type is not text/plain, got: {content_type})")
+            return
+        
+        destination = destination_directory / (web_import.name + ".lua")
+        destination.write_text(response.text)
+                
     def handle_web_imports(self, destination_directory: Path):
         """
-        Handles importing web files/directories specified in the metadata to a destination directory.
+        Handles all web imports.
         
         Args:
             destination_directory (Path): The directory to import the web files to.
         """
 
-        pass # todo
+        for web_import in self.import_web:
+            self._handle_web_import(web_import, destination_directory)
     
 def is_path_in_list(path: Path, paths: list[Path]) -> bool:
     """
@@ -273,3 +314,48 @@ def build_addon(directory: Path, output_file: Path):
 
     logger.debug(f"addon_builder: Writing build to output path: {output_file}")
     output_file.write_text(content)
+    
+def _get_vehicle_files(addon_directory: Path) -> list[Path]:
+    """
+    Returns all vehicle files in the addon directory.
+
+    Args:
+        addon_directory (Path): The directory to get the vehicle files from.
+
+    Returns:
+        list[Path]: The list of vehicle files in the addon directory.
+    """
+    
+    return list(addon_directory.glob("vehicle_*.xml"))
+    
+def copy_addon(addon_directory: Path, script_file: Path, destination: Path):
+    """
+    Copies the addon (script.lua, playlist.xml and all vehicle files) to the destination path.
+
+    Args:
+        addon_directory (Path): The directory to copy the addon from.
+        script_file (Path): The script file to copy the addon to.
+        destination (Path): The destination path to copy the addon to.
+        
+    Raises:
+        FileNotFoundError: If an addon playlist file does not exist in the addon directory.
+    """
+    
+    playlist_file = addon_directory / "playlist.xml"
+    
+    if not playlist_file:
+        raise FileNotFoundError(f"Could not find playlist.xml in addon directory: {addon_directory}")
+    
+    vehicle_files = _get_vehicle_files(addon_directory)
+    
+    destination.mkdir(parents = True, exist_ok = True)
+
+    logger.debug(f"addon_builder: Copying playlist to destination")
+    shutil.copy2(playlist_file, destination / "playlist.xml")
+    
+    logger.debug(f"addon_builder: Copying script to destination")
+    shutil.copy2(script_file, destination / "script.lua")
+    
+    for vehicle_file in vehicle_files:
+        logger.debug(f"addon_builder: Copying vehicle file ({vehicle_file.name}) to destination")
+        shutil.copy2(vehicle_file, destination / vehicle_file.name)
