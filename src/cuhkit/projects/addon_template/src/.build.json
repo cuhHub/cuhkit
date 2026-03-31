@@ -1,0 +1,10 @@
+{
+    "build_order" : [
+        "libs",
+        "services",
+        "main.lua"
+    ],
+    "ignore" : [],
+    "import_web" : [],
+    "import_local" : []
+}

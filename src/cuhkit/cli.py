@@ -104,6 +104,7 @@ def new(name: str, path: Path, project_type: projects.ProjectType):
 
     if project_type == projects.ProjectType.ADDON:
         project = projects.create_addon_project(name, path)
+        project.first_time_setup()
     elif project_type == projects.ProjectType.MOD:
         project = projects.create_mod_project(name, path)
         

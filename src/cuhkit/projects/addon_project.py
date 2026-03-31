@@ -24,6 +24,8 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+import requests
+import shutil
 
 from . import (
     Project,
@@ -36,11 +38,10 @@ from cuhkit.exceptions import (
     ProjectAlreadyExistsException
 )
 
-from cuhkit.libs.api import Client
+from cuhkit import CUHKIT_PACKAGE_PATH
 from cuhkit.libs import addon_builder
 from cuhkit.libs.timeit import TimeIt
 from cuhkit.log import logger
-from cuhkit.credentials import credentials
 
 # // Main
 __all__ = [
@@ -48,6 +49,9 @@ __all__ = [
     "AddonProject",
     "create_addon_project"
 ]
+
+ADDON_TEMPLATE_PATH = CUHKIT_PACKAGE_PATH / "projects" / "addon_template"
+INTELLISENSE_GITHUB_URL = "https://raw.githubusercontent.com/Cuh4/StormworksAddonLuaDocumentation/main/docs/intellisense.lua"
 
 class AddonProjectConfiguration(ProjectConfiguration):
     """
@@ -78,7 +82,6 @@ class AddonProject(Project):
             path = path
         )
         
-        self.api_client = Client(token = credentials.api_token) if credentials.api_token is not None else None
         self.project_configuration = self.get_project_configuration()
         
     def get_stormworks_addon_directory(self) -> Path:
@@ -91,6 +94,25 @@ class AddonProject(Project):
 
         return self.project_configuration.stormworks_addons_path / self.name
     
+    def copy_over_template(self):
+        """
+        Copies over the addon template to the project.
+        """
+        
+        logger.info(f"Copying over addon template ({ADDON_TEMPLATE_PATH}) to {self.project_configuration.src}...")
+        shutil.copytree(ADDON_TEMPLATE_PATH, self.project_configuration.src, dirs_exist_ok = True)
+        
+        intellisense_file = self.project_configuration.src / "intellisense.lua"
+        intellisense_file.write_text(requests.get(INTELLISENSE_GITHUB_URL).text)
+        
+    def first_time_setup(self):
+        """
+        Setups the addon project (first-time setup).
+        This should only need to be used after creating an addon project.
+        """
+        
+        self.copy_over_template()
+    
     def setup(self):
         """
         Setups the addon project (first-time setup).
@@ -100,7 +122,11 @@ class AddonProject(Project):
         self.build()
         
         logger.info("Setting up addon project...")
-        addon_builder.setup_addon(self.project_configuration.src, self.project_configuration.build_destination, self.get_stormworks_addon_directory())
+        
+        try:
+            addon_builder.setup_addon(self.project_configuration.src, self.project_configuration.build_destination, self.get_stormworks_addon_directory())
+        except FileNotFoundError:
+            logger.error("Failed to setup addon project, missing `playlist.xml` file in addon src directory.")
          
     def build(self):
         """
@@ -170,7 +196,7 @@ class AddonProject(Project):
         playlist_file = self.project_configuration.src / "playlist.xml"
         
         if not playlist_file.exists():
-            raise FileNotFoundError("Missing `playlist.xml` file in addon project directory.")
+            raise FileNotFoundError("Missing `playlist.xml` file in addon project src directory.")
         
         with TimeIt():
             self.api_client.upload_addon(
