@@ -19,13 +19,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-__VERSION__ = "0.0.0"
+# // Main
+from pathlib import Path
 
-# // Imports
+__VERSION__ = "0.0.0"
+CUHKIT_DATA_PATH = Path.home() / ".cuhkit"
+
 from . import exceptions
 from . import log
 from . import libs
 from . import projects
+from . import credentials
 
 from . import cli_context
 from .cli import cli
