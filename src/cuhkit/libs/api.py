@@ -170,6 +170,16 @@ class Client():
         
         return self.send_request("GET", "/storage/addons")
     
+    def get_mods(self) -> list[str]:
+        """
+        Returns all cuhHub mods.
+
+        Returns:
+            list[str]: The JSON response.
+        """
+        
+        return self.send_request("GET", "/storage/mods")
+    
     def is_addon_in_server(self, addon_name: str, server_id: int) -> bool:
         """
         Checks if an addon is in a cuhHub server.
@@ -184,6 +194,20 @@ class Client():
         
         return addon_name in self.get_server(server_id)["addons"]
     
+    def is_mod_in_server(self, mod_name: str, server_id: int) -> bool:
+        """
+        Checks if a mod is in a cuhHub server.
+
+        Args:
+            mod_name (str): The name of the mod to check.
+            server_id (int): The ID of the server to check.
+
+        Returns:
+            bool: True if the mod is in the server, False otherwise.
+        """
+        
+        return mod_name in self.get_server(server_id)["mods"]
+    
     def does_addon_exist(self, addon_name: str) -> bool:
         """
         Checks if an addon exists.
@@ -196,6 +220,19 @@ class Client():
         """
         
         return addon_name in self.get_addons()
+    
+    def does_mod_exist(self, mod_name: str) -> bool:
+        """
+        Checks if a mod exists.
+
+        Args:
+            mod_name (str): The name of the mod to check.
+
+        Returns:
+            bool: True if the mod exists, False otherwise.
+        """
+        
+        return mod_name in self.get_mods()
     
     def add_addon(self, addon_name: str, server_id: int):
         """
@@ -211,6 +248,23 @@ class Client():
             endpoint = f"/servers/{server_id}/addons",
             body = {
                 "addon_name" : addon_name
+            }
+        )
+        
+    def add_mod(self, mod_name: str, server_id: int):
+        """
+        Adds a mod to a cuhHub server.
+
+        Args:
+            mod_name (str): The name of the mod to add.
+            server_id (int): The ID of the server to add the mod to.
+        """
+        
+        self.send_request(
+            method = "PATCH",
+            endpoint = f"/servers/{server_id}/mods",
+            body = {
+                "mod_name" : mod_name
             }
         )
         
@@ -239,5 +293,23 @@ class Client():
                     self._resolve_file_for_request("vehicle_files", vehicle_file)
                     for vehicle_file in vehicle_files
                 ]
+            ]
+        )
+        
+    def upload_mod(self, mod_name: str, mod_zip: Path, *, allow_update: bool = True):
+        """
+        Uploads a mod.
+
+        Args:
+            mod_name (str): The name of the mod.
+            mod_zip (Path): The mod's .zip file.
+            allow_update (bool, optional): Whether or not to allow updating instead of uploading if the mod already exists. Defaults to True.
+        """
+        
+        self.send_request(
+            method = "PATCH" if self.does_mod_exist(mod_name) and allow_update else "POST",
+            endpoint = f"/storage/mods/{mod_name}",
+            files = [
+                self._resolve_file_for_request("mod_zip", mod_zip)
             ]
         )
