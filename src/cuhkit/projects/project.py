@@ -22,6 +22,7 @@ limitations under the License.
 # // Imports
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from pathlib import Path
 from enum import Enum
 
@@ -79,7 +80,7 @@ class ProjectConfiguration(BaseModel):
         
 TProjectConfiguration = TypeVar("TProjectConfiguration", bound = ProjectConfiguration) # shoot me dude
 
-class Project(Generic[TProjectConfiguration]):
+class Project(Generic[TProjectConfiguration], ABC):
     """
     A base cuhkit project.
     """
@@ -208,6 +209,7 @@ class Project(Generic[TProjectConfiguration]):
         self.get_path_to_project_file().unlink(missing_ok = True)
             
     @staticmethod
+    @abstractmethod
     def get_project_configuration_from_content(content: str) -> ProjectConfiguration:
         """
         Returns a project configuration from the content of a cuhkit project file.
@@ -219,7 +221,7 @@ class Project(Generic[TProjectConfiguration]):
             ProjectConfiguration: The project configuration.
         """
         
-        raise NotImplementedError("Project.get_project_configuration_from_content is not implemented.")
+        pass
     
     @classmethod
     def from_path(cls, path: Path) -> Project:
