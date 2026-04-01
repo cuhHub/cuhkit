@@ -29,7 +29,8 @@ from . import (
     Project,
     ProjectConfiguration,
     ProjectType,
-    does_project_exist_at_path
+    does_project_exist_at_path,
+    TEMPLATES_PATH
 )
 
 from cuhkit.exceptions import (
@@ -37,7 +38,6 @@ from cuhkit.exceptions import (
     CredentialsException
 )
 
-from cuhkit import CUHKIT_PACKAGE_PATH
 from cuhkit.libs import mod_builder
 from cuhkit.libs import templates
 from cuhkit.libs.timeit import TimeIt
@@ -50,7 +50,7 @@ __all__ = [
     "create_mod_project"
 ]
 
-MOD_TEMPLATE_PATH = CUHKIT_PACKAGE_PATH / "projects" / "mod_template"
+MOD_TEMPLATE_PATH = TEMPLATES_PATH / "mod_template"
 INTELLISENSE_GITHUB_URL = "https://raw.githubusercontent.com/Cuh4/StormworksModLuaDocumentation/main/docs/intellisense.lua"
 
 class ModProjectConfiguration(ProjectConfiguration):

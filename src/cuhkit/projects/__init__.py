@@ -19,20 +19,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-# // Imports
+# // Main
+import json
+from pathlib import Path
+
+TEMPLATES_PATH = Path(__file__).parent / "templates"
+
 from .project import *
 from .mod_project import *
 from .addon_project import *
-
-import json
-from pathlib import Path
 
 from cuhkit.exceptions import (
     ProjectNotFoundException,
     ProjectLoadFailureException
 )
 
-# // Main
 def load_project_at_path(path: Path) -> AddonProject | ModProject:
     """
     Loads a cuhkit project at the specified path.
