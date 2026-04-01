@@ -130,7 +130,7 @@ def delete(context: cli_context.CLIContext, project: projects.Project):
 @requires_project([projects.ProjectType.ADDON, projects.ProjectType.MOD])
 def build(context: cli_context.CLIContext, project: projects.AddonProject | projects.ModProject):
     """
-    Builds and syncs a cuhkit addon project.
+    Builds and syncs a cuhkit project.
     """
 
     project.build()
@@ -171,7 +171,7 @@ def get_position(context: cli_context.CLIContext, project: projects.AddonProject
 @requires_project([projects.ProjectType.ADDON])
 def setup(context: cli_context.CLIContext, project: projects.AddonProject):
     """
-    Sets up a cuhkit project for the first time.
+    Sets up a cuhkit addon project for the first time.
     Should only really be used after cloning an existing addon project.
     """
 
