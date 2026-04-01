@@ -1,4 +1,4 @@
 @ECHO OFF
 
-rmdir dist /S /q
-py -m build
+call build_pip
+call build_pyinstaller
