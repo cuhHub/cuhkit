@@ -238,3 +238,6 @@ def delete_credentials(context: cli_context.CLIContext):
 
     context.credentials.remove()
     logger.info("Deleted cuhkit credentials.")
+    
+if __name__ == "__main__":
+    cli()
