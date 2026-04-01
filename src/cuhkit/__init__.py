@@ -22,7 +22,7 @@ limitations under the License.
 # // Main
 from pathlib import Path
 
-__VERSION__ = "0.0.0"
+__VERSION__ = "1.0.0"
 CUHKIT_DATA_PATH = Path.home() / ".cuhkit"
 CUHKIT_PACKAGE_PATH = Path(__file__).parent
 
