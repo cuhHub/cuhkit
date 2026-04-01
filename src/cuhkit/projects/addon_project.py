@@ -24,8 +24,6 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-import requests
-import shutil
 
 from . import (
     Project,
@@ -35,7 +33,8 @@ from . import (
 )
 
 from cuhkit.exceptions import (
-    ProjectAlreadyExistsException
+    ProjectAlreadyExistsException,
+    CredentialsException
 )
 
 from cuhkit import CUHKIT_PACKAGE_PATH
@@ -134,39 +133,7 @@ class AddonProject(Project[AddonProjectConfiguration]):
         with TimeIt(): 
             addon_builder.build_addon(self.project_configuration.src, self.project_configuration.build_destination)
             
-    def _get_published_addon_name(self, is_dev: bool) -> str:
-        """
-        Returns the name of the published addon.
-        
-        Args:
-            is_dev (bool): Whether or not to return the development build name.
-            
-        Returns:
-            str: The name of the published addon.
-        """
-
-        if is_dev:
-            return f"{self.name}_dev"
-
-        return self.name
-    
-    def _get_publish_server_ids(self, server_id: int) -> list[int]:
-        """
-        Returns the server IDs to publish to.
-        
-        Args:
-            server_id (int): The server ID to publish to, or -1 for all.
-            
-        Returns:
-            list[int]: The server IDs to publish to.
-        """
-
-        if server_id == -1:
-            return [server["id"] for server in self.api_client.get_servers()]
-        
-        return [server_id]
-            
-    def publish(self, server_id: int = -1, is_dev: bool = False):
+    def publish(self, server_id: int, is_dev: bool = False):
         """
         Publishes the addon project to cuhHub.
         
@@ -175,14 +142,14 @@ class AddonProject(Project[AddonProjectConfiguration]):
             is_dev (bool): Whether or not to publish as a development build.
             
         Raises:
-            ValueError: If no API token is found in credentials
+            CredentialsException: If no API token is found in credentials
             FileNotFoundError: If the addon playlist file could not be found
         """
         
         if self.api_client is None:
-            raise ValueError("No API token found in credentials, can't publish.")
+            raise CredentialsException("No API token found in credentials, can't publish.")
         
-        addon_name = self._get_published_addon_name(is_dev)
+        addon_name = self.get_publish_name(is_dev)
         logger.info(f"Uploading addon to cuhHub as '{addon_name}'...")
         
         if not self.project_configuration.build_destination.exists():
@@ -203,7 +170,7 @@ class AddonProject(Project[AddonProjectConfiguration]):
                 allow_update = True
             )
         
-        server_ids = self._get_publish_server_ids(server_id)
+        server_ids = self.get_publish_server_ids(server_id)
         logger.info(f"Adding addon to servers: {server_ids}...")
         
         with TimeIt():

@@ -150,6 +150,38 @@ class Project(Generic[TProjectConfiguration]):
         """
         
         self.save()
+        
+    def get_publish_name(self, is_dev: bool) -> str:
+        """
+        Returns the project name for publishing.
+        
+        Args:
+            is_dev (bool): Whether or not to return the development build name.
+            
+        Returns:
+            str: The name of the published project.
+        """
+
+        if is_dev:
+            return f"{self.name}_dev"
+
+        return self.name
+    
+    def get_publish_server_ids(self, server_id: int) -> list[int]:
+        """
+        Returns the server IDs to publish to.
+        
+        Args:
+            server_id (int): The server ID to publish to, or -1 for all.
+            
+        Returns:
+            list[int]: The server IDs to publish to.
+        """
+
+        if server_id == -1:
+            return [server["id"] for server in self.api_client.get_servers()]
+        
+        return [server_id]
 
     def get_path_to_project_file(self) -> Path:
         """
