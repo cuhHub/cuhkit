@@ -30,6 +30,7 @@ from cuhkit import projects
 from cuhkit import cli_context
 from cuhkit.log import set_logging_verbose, logger
 from cuhkit.exceptions import CredentialsException
+from cuhkit.projects import POSITION_PERSISTENT_DATA_KEY
 
 # // Main
 def requires_project(project_types: list[projects.ProjectType] | None = None):
@@ -147,6 +148,23 @@ def sync(context: cli_context.CLIContext, project: projects.AddonProject | proje
 
     project.sync()
     logger.info("Sync complete.")
+    
+@cli.command()
+@cli_context.pass_context
+@requires_project([projects.ProjectType.ADDON])
+def get_position(context: cli_context.CLIContext, project: projects.AddonProject):
+    """
+    Returns the last saved in-game position.
+    To use this, save a formatted matrix position to `_debug_pos` (key might be outdated, see source code) via cuhHub persistent data service.
+    """
+
+    position = project.get_position()
+    
+    if position is None:
+        logger.error(f"No position found. Save a formatted position to '{POSITION_PERSISTENT_DATA_KEY}' to cuhHub persistent data service via an addon.")
+        return
+    
+    logger.info(f"Position: {position} (copied to clipboard)")
     
 @cli.command()
 @cli_context.pass_context
