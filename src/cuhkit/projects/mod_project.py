@@ -85,8 +85,6 @@ class ModProject(Project[ModProjectConfiguration]):
         This should only need to be used after creating a mod project.
         """
         
-        super().first_time_setup()
-
         templates.copy_template(
             template_path = MOD_TEMPLATE_PATH,
             downloads = [

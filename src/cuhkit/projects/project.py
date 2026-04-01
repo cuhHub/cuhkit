@@ -142,15 +142,14 @@ class Project(Generic[TProjectConfiguration], ABC):
         
         return self.project_configuration.src
     
+    @abstractmethod
     def first_time_setup(self):
         """
         Setups the project (first-time setup).
         This should only need to be used after creating the project.
-
-        This method is recommended to be implemented by subclasses.
         """
-        
-        self.save()
+
+        pass
         
     def get_publish_name(self, is_dev: bool) -> str:
         """

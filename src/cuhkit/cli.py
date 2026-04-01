@@ -62,12 +62,12 @@ def requires_project(project_types: list[projects.ProjectType] | None = None):
 
 @click.group()
 @click.version_option(__VERSION__)
-@click.help_option()
+@click.help_option("--help", "-h")
 @click.pass_context
-@click.option("verbose", "--verbose", "-v", is_flag = True, help = "Enables verbose output.")
+@click.option("verbose", "--verbose", "-v", is_flag = True, help = "Enables verbose logging.")
 def cli(context: click.Context, verbose: bool):
     """
-    Main CLI entry point.
+    cuhkit - A CLI-oriented Python package for handling cuhHub Stormworks projects (addons/mods).
     """
     
     logger.info("cuhkit - A CLI-oriented Python package for handling cuhHub Stormworks projects (addons/mods).")
@@ -95,7 +95,12 @@ def cli(context: click.Context, verbose: bool):
     required = True,
     help = "The type of the project to create."
 )
-def new(name: str, path: Path, project_type: projects.ProjectType):
+@click.option(
+    "--skip-first-time-setup", "-sfts", "skip_first_time_setup",
+    is_flag = True,
+    help = "Whether or not to skip the first-time setup process (e.g. copying template files)."
+)
+def new(name: str, path: Path, project_type: projects.ProjectType, skip_first_time_setup: bool):
     """
     Create a new cuhkit project.
     """
@@ -109,7 +114,14 @@ def new(name: str, path: Path, project_type: projects.ProjectType):
     elif project_type == projects.ProjectType.MOD:
         project = projects.create_mod_project(name, path)
 
-    project.first_time_setup() 
+    if not skip_first_time_setup:
+        logger.info("Running first-time setup...")
+        project.first_time_setup() 
+    else:
+        logger.info("Skipping first-time setup...")
+
+    logger.info("Saving cuhkit project...")
+    project.save()
 
     logger.info(f"Created cuhkit project at {path}.")
 
