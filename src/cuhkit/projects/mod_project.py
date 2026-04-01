@@ -33,10 +33,13 @@ from . import (
 )
 
 from cuhkit.exceptions import (
-    ProjectAlreadyExistsException
+    ProjectAlreadyExistsException,
+    CredentialsException
 )
 
+from cuhkit import CUHKIT_PACKAGE_PATH
 from cuhkit.libs import mod_builder
+from cuhkit.libs import templates
 from cuhkit.libs.timeit import TimeIt
 from cuhkit.log import logger
 
@@ -46,6 +49,9 @@ __all__ = [
     "ModProject",
     "create_mod_project"
 ]
+
+MOD_TEMPLATE_PATH = CUHKIT_PACKAGE_PATH / "projects" / "mod_template"
+INTELLISENSE_GITHUB_URL = "https://raw.githubusercontent.com/Cuh4/StormworksModLuaDocumentation/main/docs/intellisense.lua"
 
 class ModProjectConfiguration(ProjectConfiguration):
     """
@@ -72,6 +78,94 @@ class ModProject(Project[ModProjectConfiguration]):
         super().__init__(
             project_configuration = project_configuration
         )
+        
+    def first_time_setup(self):
+        """
+        Setups the mod project (first-time setup).
+        This should only need to be used after creating a mod project.
+        """
+        
+        super().first_time_setup()
+
+        templates.copy_template(
+            template_path = MOD_TEMPLATE_PATH,
+            downloads = [
+                templates.TemplateDownload(
+                    url = INTELLISENSE_GITHUB_URL,
+                    destination = self.project_configuration.path / "intellisense.lua"
+                )
+            ],
+            destination = self.project_configuration.path
+        )
+        
+    def get_stormworks_mod_directory(self) -> Path:
+        """
+        Returns the Stormworks mod path for this project.
+
+        Returns:
+            Path: The path to the Stormworks mod.
+        """
+
+        return self.project_configuration.stormworks_mods_path / self.name
+     
+    def build(self):
+        """
+        Builds the mod project for publishing.
+        """
+        
+        logger.info(f"Building mod in {self.project_configuration.src} to {self.project_configuration.mod_build_destination}...")
+        
+        with TimeIt():
+            mod_builder.build_mod(self.project_configuration.src, self.project_configuration.mod_build_destination)
+
+    def sync(self):
+        """
+        Syncs the mod to the game.
+        """
+        
+        logger.info(f"Syncing to game ({self.get_stormworks_mod_directory()})...")
+
+        with TimeIt():
+            mod_builder.sync_mod(self.project_configuration.src, self.get_stormworks_mod_directory())
+            
+    def publish(self, server_id: int, is_dev: bool = False):
+        """
+        Publishes the mod to cuhHub.
+        
+        Args:
+            server_id (int): The server ID to publish to, or -1 for all.
+            is_dev (bool): Whether or not to publish as a development build.
+        
+        Raises:
+            CredentialsException: If no API token is found in credentials
+        """
+
+        if self.api_client is None:
+            raise CredentialsException("No API token found in credentials, can't publish.")
+        
+        mod_name = self.get_publish_name(is_dev)
+        logger.info(f"Uploading mod to cuhHub as '{mod_name}'...")
+        
+        if not self.project_configuration.mod_build_destination.exists():
+            logger.info("Mod build not found, building...")
+            self.build()
+            
+        with TimeIt():
+            self.api_client.upload_mod(mod_name, self.project_configuration.mod_build_destination)
+            
+        server_ids = self.get_publish_server_ids(server_id)
+        logger.info(f"Adding mod to server: {server_ids}")
+        
+        with TimeIt():
+            for server_id in server_ids:
+                if not self.api_client.is_mod_in_server(mod_name, server_id):
+                    logger.info(f"Adding mod to server {server_id}...")
+                    self.api_client.add_mod(mod_name, server_id)
+                else:
+                    logger.info(f"Mod already in server {server_id}, skipping...")
+                    
+            logger.info(f"Refreshing server {server_id}...")
+            self.api_client.refresh_server(server_id)
 
     @staticmethod
     def get_project_configuration_from_content(content: str) -> ModProjectConfiguration:
