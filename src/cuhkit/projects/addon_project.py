@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from pyperclip import copy as copy_to_clipboard
 
 from . import (
     Project,
@@ -47,11 +48,15 @@ from cuhkit.log import logger
 __all__ = [
     "AddonProjectConfiguration",
     "AddonProject",
-    "create_addon_project"
+    "create_addon_project",
+    "ADDON_TEMPLATE_PATH",
+    "INTELLISENSE_GITHUB_URL",
+    "POSITION_PERSISTENT_DATA_KEY"
 ]
 
 ADDON_TEMPLATE_PATH = CUHKIT_PACKAGE_PATH / "projects" / "addon_template"
 INTELLISENSE_GITHUB_URL = "https://raw.githubusercontent.com/Cuh4/StormworksAddonLuaDocumentation/main/docs/intellisense.lua"
+POSITION_PERSISTENT_DATA_KEY = "_debug_pos"
 
 class AddonProjectConfiguration(ProjectConfiguration):
     """
@@ -201,6 +206,26 @@ class AddonProject(Project[AddonProjectConfiguration]):
         except FileNotFoundError as exception:
             logger.error(f"Failed to sync addon, got exception: {exception}")
             logger.info("This may be due to a missing `playlist.xml` file in the Stormworks addon directory. Please set up this addon project first to try and automatically create the `playlist.xml` file, or manually create one if not doable.")
+        
+    def get_position(self) -> str | None:
+        """
+        Returns the saved position in-game, and copies it to clipboard.
+        To use this, save a position to `POSITION_PERSISTENT_DATA_KEY` via cuhHub persistent data service - ideally
+        formatted like `matrix.translation(x, y, z)`.
+        
+        Returns:
+            str | None: The saved position, or None if not found.
+        """
+        
+        position = self.api_client.get_persistent_data(POSITION_PERSISTENT_DATA_KEY)
+        
+        if position is None:
+            return None
+        
+        position = position["value"]
+        
+        copy_to_clipboard(position)
+        return position
         
     @staticmethod
     def get_project_configuration_from_content(content: str) -> AddonProjectConfiguration:
