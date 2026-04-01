@@ -39,6 +39,7 @@ from cuhkit.exceptions import (
 )
 
 from cuhkit import CUHKIT_PACKAGE_PATH
+from cuhkit.libs import templates
 from cuhkit.libs import addon_builder
 from cuhkit.libs.timeit import TimeIt
 from cuhkit.log import logger
@@ -89,28 +90,28 @@ class AddonProject(Project[AddonProjectConfiguration]):
 
         return self.project_configuration.stormworks_addons_path / self.name
     
-    def copy_over_template(self):
-        """
-        Copies over the addon template to the project.
-        """
-        
-        logger.info(f"Copying over addon template ({ADDON_TEMPLATE_PATH}) to {self.project_configuration.path}...")
-        shutil.copytree(ADDON_TEMPLATE_PATH, self.project_configuration.path, dirs_exist_ok = True)
-        
-        intellisense_file = self.project_configuration.path / "intellisense.lua"
-        intellisense_file.write_text(requests.get(INTELLISENSE_GITHUB_URL).text)
-        
     def first_time_setup(self):
         """
         Setups the addon project (first-time setup).
         This should only need to be used after creating an addon project.
         """
         
-        self.copy_over_template()
+        super().first_time_setup()
+        
+        templates.copy_template(
+            template_path = ADDON_TEMPLATE_PATH,
+            downloads = [
+                templates.TemplateDownload(
+                    url = INTELLISENSE_GITHUB_URL,
+                    destination = self.project_configuration.path / "intellisense.lua"
+                )
+            ],
+            destination = self.project_configuration.path
+        )
     
     def setup(self):
         """
-        Setups the addon project (first-time setup).
+        Setups the addon project (first-time setup and build).
         This should only need to be used after cloning an addon project.
         """
         
