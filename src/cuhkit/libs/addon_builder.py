@@ -21,7 +21,6 @@ limitations under the License.
 
 # // Imports
 import shutil
-import requests
 from pathlib import Path
 
 from pydantic import (
@@ -31,6 +30,12 @@ from pydantic import (
 
 from cuhkit import __VERSION__
 from cuhkit.log import logger
+
+from cuhkit.libs.requests import (
+    request,
+    requests,
+    is_plain_text_response
+)
 
 # // Main
 METADATA_FILE_NAME = ".build.json"
@@ -151,7 +156,7 @@ class BuilderMetadata(BaseModel):
         logger.debug(f"addon_builder: Importing web file at URL: {web_import.url} (name: {web_import.name})")
         
         try:
-            response = requests.get(web_import.url, headers = {"User-Agent": f"cuhkit/{__VERSION__}"})
+            response = request("GET", web_import.url)
             response.raise_for_status()
         except requests.exceptions.RequestException as exception:
             logger.error(f"Failed to import web file/directory at URL: {web_import.url} (request error, exception: {exception})")
@@ -160,10 +165,8 @@ class BuilderMetadata(BaseModel):
             logger.error(f"Failed to import web file/directory at URL: {web_import.url} (HTTP error (bad status code), exception: {exception})")
             return
         
-        content_type = response.headers.get("content-type")
-        
-        if content_type is None or content_type.find("text/plain") == -1:
-            logger.error(f"Failed to import web file/directory at URL: {web_import.url} (content type is not text/plain, got: {content_type})")
+        if not is_plain_text_response(response):
+            logger.error(f"Failed to import web file/directory at URL: {web_import.url} (content type is not text/plain, got: {response.headers.get("content-type")})")
             return
         
         destination = destination_directory / (web_import.name + ".lua")
