@@ -62,28 +62,23 @@ class AddonProjectConfiguration(ProjectConfiguration):
     build_destination: Path = Path(".build/addon.lua")
     stormworks_addons_path: Path = Path(os.environ["APPDATA"]) / "Stormworks" / "data" / "missions"
 
-class AddonProject(Project):
+class AddonProject(Project[AddonProjectConfiguration]):
     """
     A cuhkit addon project.
     """
     
-    def __init__(self, name: str, path: Path):
+    def __init__(self, project_configuration: AddonProjectConfiguration):
         """
         Initialises cuhkit addon projects.
 
         Args:
-            name (str): The name of the addon project.
-            path (Path): The path to the addon project.
+            project_configuration (AddonProjectConfiguration): The cuhkit addon project configuration
         """
 
         super().__init__(
-            name = name,
-            project_type = ProjectType.ADDON,
-            path = path
+            project_configuration = project_configuration
         )
-        
-        self.project_configuration = self.get_project_configuration()
-        
+ 
     def get_stormworks_addon_directory(self) -> Path:
         """
         Returns the Stormworks addon path for this project.
@@ -239,19 +234,6 @@ class AddonProject(Project):
             logger.error(f"Failed to sync addon, got exception: {exception}")
             logger.info("This may be due to a missing `playlist.xml` file in the Stormworks addon directory. Please set up this addon project first to try and automatically create the `playlist.xml` file, or manually create one if not doable.")
         
-    def get_project_configuration(self) -> AddonProjectConfiguration:
-        """
-        Returns the project configuration.
-
-        Returns:
-            AddonProjectConfiguration: The project configuration.
-        """
-
-        return AddonProjectConfiguration(
-            name = self.name,
-            path = self.path
-        )
-        
     @staticmethod
     def get_project_configuration_from_content(content: str) -> AddonProjectConfiguration:
         """
@@ -265,23 +247,6 @@ class AddonProject(Project):
         """
 
         return AddonProjectConfiguration.model_validate_json(content)
-    
-    @classmethod
-    def from_project_configuration(cls, project_configuration: AddonProjectConfiguration) -> AddonProject:
-        """
-        Creates an addon project from a project configuration.
-
-        Args:
-            project_configuration (AddonProjectConfiguration): The project configuration to create the cuhkit addon project from.
-                
-        Returns:
-            AddonProject: The created cuhkit addon project.
-        """
-        
-        return cls(
-            name = project_configuration.name,
-            path = project_configuration.path
-        )
 
 def create_addon_project(name: str, path: Path) -> AddonProject:
     """
@@ -306,6 +271,8 @@ def create_addon_project(name: str, path: Path) -> AddonProject:
         raise ProjectAlreadyExistsException(f"A cuhkit project already exists at path: {path}")
     
     return AddonProject(
-        name = name,
-        path = path
+        project_configuration = AddonProjectConfiguration(
+            name = name,
+            path = path
+        )
     )

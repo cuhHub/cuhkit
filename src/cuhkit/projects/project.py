@@ -30,6 +30,8 @@ from pydantic import (
     ValidationError
 )
 
+from typing import Generic, TypeVar
+
 from cuhkit.exceptions import (
     ProjectNotFoundException,
     ProjectLoadFailureException
@@ -74,30 +76,70 @@ class ProjectConfiguration(BaseModel):
             return
         
         self.src = self.path / "src"
+        
+TProjectConfiguration = TypeVar("TProjectConfiguration", bound = ProjectConfiguration) # shoot me dude
 
-class Project():
+class Project(Generic[TProjectConfiguration]):
     """
     A base cuhkit project.
     """
     
     CUHKIT_PROJECT_FILE_NAME = ".cuhkitproj.json"
     
-    def __init__(self, name: str, project_type: ProjectType, path: Path):
+    def __init__(self, project_configuration: TProjectConfiguration = None):
         """
         Initialises cuhkit projects.
 
         Args:
-            name (str): The name of the project.
-            project_type (ProjectType): The type of the project.
-            path (Path): The path to the project.
+            project_configuration (TProjectConfiguration): The cuhkit project configuration
         """
 
-        self.name = name
-        self.project_type = project_type
-        self.path = path.resolve()
-        self.project_configuration = None
-        
+        self.project_configuration = project_configuration
         self.api_client = Client(token = credentials.api_token) if credentials.api_token is not None else None
+
+    @property
+    def name(self) -> str:
+        """
+        Gets the name of this project.
+
+        Returns:
+            str: The name of this project.
+        """
+
+        return self.project_configuration.name
+    
+    @property
+    def project_type(self) -> ProjectType:
+        """
+        Gets the type of this project.
+
+        Returns:
+            ProjectType: The type of this project.
+        """
+        
+        return self.project_configuration.project_type
+    
+    @property
+    def path(self) -> Path:
+        """
+        Gets the path to the project's directory.
+
+        Returns:
+            Path: The path to the project's directory.
+        """
+
+        return self.project_configuration.path
+    
+    @property
+    def src(self) -> Path:
+        """
+        Gets the path to the source directory for this project.
+
+        Returns:
+            Path: The path to the source directory for this project.
+        """
+        
+        return self.project_configuration.src
 
     def get_path_to_project_file(self) -> Path:
         """
@@ -108,17 +150,7 @@ class Project():
         """
 
         return get_project_file_path(self.path)
-        
-    def get_project_configuration(self) -> ProjectConfiguration:
-        """
-        Returns the project configuration for this project.
 
-        Returns:
-            ProjectConfiguration: The project configuration.
-        """
-
-        raise NotImplementedError("Project.get_project_configuration is not implemented.")
-    
     def save(self):
         """
         Saves this cuhkit project to a project configuration file.
@@ -146,28 +178,14 @@ class Project():
         """
         
         raise NotImplementedError("Project.get_project_configuration_from_content is not implemented.")
-            
-    @classmethod
-    def from_project_configuration(cls, project_configuration: ProjectConfiguration) -> Project:
-        """
-        Creates a cuhkit project from a project configuration.
-
-        Args:
-            project_configuration (ProjectConfiguration): The project configuration to create the cuhkit project from.
-            
-        Returns:
-            Project: The created cuhkit project.
-        """
-
-        raise NotImplementedError("Project.from_project_configuration is not implemented.")
     
     @classmethod
     def from_path(cls, path: Path) -> Project:
         """
-        Creates a cuhkit project from a path to the directory of a cuhkit project.
+        Creates a cuhkit project from a path to a cuhkit project.
         
         Args:
-            path (Path): The path to the directory of the cuhkit project.
+            path (Path): The path to the cuhkit project.
             
         Raises:
             ProjectNotFoundException: If no cuhkit project file is found at the path.
@@ -189,7 +207,7 @@ class Project():
         except ValidationError as exception:
             raise ProjectLoadFailureException(f"Failed to load cuhkit project from file at path: {project_file_path}") from exception
 
-        return cls.from_project_configuration(project_configuration)
+        return cls(project_configuration)
 
 def get_project_file_path(path: Path) -> Path:
     """

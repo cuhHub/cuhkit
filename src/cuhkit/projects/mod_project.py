@@ -22,6 +22,7 @@ limitations under the License.
 # // Imports
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from . import (
@@ -34,6 +35,10 @@ from . import (
 from cuhkit.exceptions import (
     ProjectAlreadyExistsException
 )
+
+from cuhkit.libs import mod_builder
+from cuhkit.libs.timeit import TimeIt
+from cuhkit.log import logger
 
 # // Main
 __all__ = [
@@ -48,42 +53,26 @@ class ModProjectConfiguration(ProjectConfiguration):
     """
 
     project_type: ProjectType = ProjectType.MOD
+    mod_build_destination: Path = Path(".build/mod.zip")
+    stormworks_mods_path: Path = Path(os.environ["APPDATA"]) / "Stormworks" / "data" / "mods"
 
-class ModProject(Project):
+class ModProject(Project[ModProjectConfiguration]):
     """
     A cuhkit mod project.
     """
     
-    def __init__(self, name: str, path: Path):
+    def __init__(self, project_configuration: ModProjectConfiguration):
         """
         Initialises cuhkit mod projects.
 
         Args:
-            name (str): The name of the mod project.
-            path (Path): The path to the mod project.
+            project_configuration (ModProjectConfiguration): The cuhkit mod project configuration
         """
 
         super().__init__(
-            name = name,
-            project_type = ProjectType.MOD,
-            path = path
+            project_configuration = project_configuration
         )
-        
-        self.project_configuration = self.get_project_configuration()
-        
-    def get_project_configuration(self) -> ModProjectConfiguration:
-        """
-        Returns the project configuration.
 
-        Returns:
-            ModProjectConfiguration: The project configuration.
-        """
-
-        return ModProjectConfiguration(
-            name = self.name,
-            path = self.path
-        )
-        
     @staticmethod
     def get_project_configuration_from_content(content: str) -> ModProjectConfiguration:
         """
@@ -97,39 +86,6 @@ class ModProject(Project):
         """
 
         return ModProjectConfiguration.model_validate_json(content)
-    
-    @classmethod
-    def from_project_configuration(cls, project_configuration: ModProjectConfiguration) -> ModProject:
-        """
-        Creates a cuhkit mod project from a project configuration.
-
-        Args:
-            project_configuration (ModProjectConfiguration): The project configuration to create the cuhkit mod project from.
-            
-        Returns:
-            ModProject: The created cuhkit mod project.
-        """
-        
-        return cls(
-            name = project_configuration.name,
-            path = project_configuration.path
-        )
-    
-    @classmethod
-    def from_project_configuration(cls, project_configuration: ProjectConfiguration) -> ModProject:
-        """
-        Creates a cuhkit mod project from a project configuration.
-
-        Args:
-            project_configuration (ModProjectConfiguration): The project configuration to create the cuhkit mod project from.
-        Returns:
-            ModProject: The created cuhkit mod project.
-        """
-        
-        return cls(
-            name = project_configuration.name,
-            path = project_configuration.path
-        )
 
 def create_mod_project(name: str, path: Path) -> ModProject:
     """
@@ -154,6 +110,8 @@ def create_mod_project(name: str, path: Path) -> ModProject:
         raise ProjectAlreadyExistsException(f"A cuhkit project already exists at path: {path}")
     
     return ModProject(
-        name = name,
-        path = path
+        project_configuration = ModProjectConfiguration(
+            name = name,
+            path = path
+        )
     )
