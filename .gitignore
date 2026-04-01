@@ -4,6 +4,8 @@ __pycache__
 
 # Distribution files
 dist
+build
+*.spec
 *.egg-info
 
 # Testing
