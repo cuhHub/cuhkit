@@ -105,6 +105,8 @@ def new(name: str, path: Path, project_type: projects.ProjectType, skip_first_ti
     Create a new cuhkit project.
     """
     
+    path = path.relative_to(Path.cwd())
+    
     if projects.does_project_exist_at_path(path):
         logger.error(f"A cuhkit project already exists at {path}.")
         return
