@@ -116,7 +116,7 @@ def new(name: str, path: Path, project_type: projects.ProjectType):
 @cli.command()
 @cli_context.pass_context
 @requires_project()
-@click.confirmation_option(prompt = "Are you sure you want to delete this cuhkit project?")
+@click.confirmation_option(prompt = "Are you sure you want to delete this cuhkit project? Only the project file will be deleted. Any files you created will remain.")
 def delete(context: cli_context.CLIContext, project: projects.Project):
     """
     Deletes a cuhkit project.
