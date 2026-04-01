@@ -23,7 +23,11 @@ limitations under the License.
 import json
 from pathlib import Path
 
-TEMPLATES_PATH = Path(__file__).parent / "templates"
+from cuhkit import CUHKIT_PACKAGE_PATH
+TEMPLATES_PATH = CUHKIT_PACKAGE_PATH / "projects" / "templates"
+
+if not TEMPLATES_PATH.exists():
+    raise RuntimeError(f"Could not find templates directory: {TEMPLATES_PATH}")
 
 from .project import *
 from .mod_project import *
