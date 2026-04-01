@@ -60,7 +60,7 @@ class ModProjectConfiguration(ProjectConfiguration):
 
     project_type: ProjectType = ProjectType.MOD
     mod_build_destination: Path = Path(".build/mod.zip")
-    stormworks_mods_path: Path = Path(os.environ["APPDATA"]) / "Stormworks" / "data" / "mods"
+    stormworks_mods_path: Path | None = None
 
 class ModProject(Project[ModProjectConfiguration]):
     """
@@ -99,10 +99,21 @@ class ModProject(Project[ModProjectConfiguration]):
     def get_stormworks_mod_directory(self) -> Path:
         """
         Returns the Stormworks mod path for this project.
+        
+        Raises:
+            FileNotFoundError: If the default Stormworks mod directory could not be found.
 
         Returns:
             Path: The path to the Stormworks mod.
         """
+        
+        if self.project_configuration.stormworks_mods_path is None:
+            path = Path(os.environ["APPDATA"]) / "Stormworks" / "data" / "mods"
+            
+            if not path.exists():
+                raise FileNotFoundError(f"Default Stormworks mod directory not found. Consider setting `stormworks_mods_path` in the project configuration.")
+            
+            return path / self.name
 
         return self.project_configuration.stormworks_mods_path / self.name
      

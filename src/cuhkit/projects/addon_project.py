@@ -65,7 +65,7 @@ class AddonProjectConfiguration(ProjectConfiguration):
 
     project_type: ProjectType = ProjectType.ADDON
     build_destination: Path = Path(".build/addon.lua")
-    stormworks_addons_path: Path = Path(os.environ["APPDATA"]) / "Stormworks" / "data" / "missions"
+    stormworks_addons_path: Path | None = None
 
 class AddonProject(Project[AddonProjectConfiguration]):
     """
@@ -87,10 +87,21 @@ class AddonProject(Project[AddonProjectConfiguration]):
     def get_stormworks_addon_directory(self) -> Path:
         """
         Returns the Stormworks addon path for this project.
+        
+        Raises:
+            FileNotFoundError: If the default Stormworks addon directory could not be found.
 
         Returns:
             Path: The path to the Stormworks addon.
         """
+        
+        if self.project_configuration.stormworks_addons_path is None:
+            path = Path(os.environ["APPDATA"]) / "Stormworks" / "data" / "missions"
+            
+            if not path.exists():
+                raise FileNotFoundError(f"Default Stormworks addon directory not found. Consider setting `stormworks_addon_path` in the project configuration.")
+
+            return path / self.name
 
         return self.project_configuration.stormworks_addons_path / self.name
     
