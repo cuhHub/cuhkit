@@ -140,6 +140,16 @@ class Project(Generic[TProjectConfiguration]):
         """
         
         return self.project_configuration.src
+    
+    def first_time_setup(self):
+        """
+        Setups the project (first-time setup).
+        This should only need to be used after creating the project.
+
+        This method is recommended to be implemented by subclasses.
+        """
+        
+        self.save()
 
     def get_path_to_project_file(self) -> Path:
         """
