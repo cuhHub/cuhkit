@@ -100,8 +100,6 @@ class AddonProject(Project[AddonProjectConfiguration]):
         This should only need to be used after creating an addon project.
         """
         
-        super().first_time_setup()
-        
         templates.copy_template(
             template_path = ADDON_TEMPLATE_PATH,
             downloads = [

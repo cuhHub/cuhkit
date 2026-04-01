@@ -120,6 +120,9 @@ def new(name: str, path: Path, project_type: projects.ProjectType, skip_first_ti
     else:
         logger.info("Skipping first-time setup...")
 
+    logger.info("Saving cuhkit project...")
+    project.save()
+
     logger.info(f"Created cuhkit project at {path}.")
 
 @cli.command()
