@@ -135,7 +135,7 @@ def build(context: cli_context.CLIContext, project: projects.AddonProject | proj
 
     project.build()
     project.sync()
-    logger.info("Built complete.")
+    logger.info("Build complete.")
     
 @cli.command()
 @cli_context.pass_context
