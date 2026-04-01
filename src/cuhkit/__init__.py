@@ -20,11 +20,15 @@ limitations under the License.
 """
 
 # // Main
+import sys
 from pathlib import Path
 
 __VERSION__ = "1.0.0"
 CUHKIT_DATA_PATH = Path.home() / ".cuhkit"
 CUHKIT_PACKAGE_PATH = Path(__file__).parent
+
+if getattr(sys, "frozen", False): # pyinstaller context
+    CUHKIT_PACKAGE_PATH = Path(sys._MEIPASS) / "cuhkit"
 
 from . import exceptions
 from . import log
