@@ -29,9 +29,10 @@ from cuhkit import __VERSION__
 from cuhkit import projects
 from cuhkit import cli_context
 from cuhkit.log import set_logging_verbose, logger
+from cuhkit.exceptions import CredentialsException
 
 # // Main
-def requires_project(project_type: projects.ProjectType | None = None):
+def requires_project(project_types: list[projects.ProjectType] | None = None):
     """
     Decorator for click commands that require a cuhkit project.
     
@@ -48,8 +49,8 @@ def requires_project(project_type: projects.ProjectType | None = None):
                 logger.error("No cuhkit project found in current directory, this command must be run in a cuhkit project directory.")
                 return
             
-            if project_type is not None and context.project.project_type != project_type:
-                logger.error(f"Current cuhkit project is not of required type {project_type}, got {context.project.project_type}.")
+            if project_types is not None and context.project.project_type not in project_types:
+                logger.error(f"This command is not compatible with this cuhkit project. Current cuhkit project is not any of required types {project_types}, got {context.project.project_type}.")
                 return
 
             return function(*args, **kwargs, project = context.project)
@@ -125,31 +126,31 @@ def delete(context: cli_context.CLIContext, project: projects.Project):
 
 @cli.command()
 @cli_context.pass_context
-@requires_project(projects.ProjectType.ADDON)
-def build(context: cli_context.CLIContext, project: projects.AddonProject):
+@requires_project([projects.ProjectType.ADDON, projects.ProjectType.MOD])
+def build(context: cli_context.CLIContext, project: projects.AddonProject | projects.ModProject):
     """
     Builds and syncs a cuhkit addon project.
     """
 
     project.build()
     project.sync()
-    logger.info("Built cuhkit addon project.")
+    logger.info("Built complete.")
     
 @cli.command()
 @cli_context.pass_context
-@requires_project(projects.ProjectType.ADDON)
-def sync(context: cli_context.CLIContext, project: projects.AddonProject):
+@requires_project([projects.ProjectType.ADDON, projects.ProjectType.MOD])
+def sync(context: cli_context.CLIContext, project: projects.AddonProject | projects.ModProject):
     """
     Sync a cuhkit project to Stormworks.
     Note that the 'build' command also does this, but builds beforehand.
     """
 
     project.sync()
-    logger.info("Synced cuhkit addon project.")
+    logger.info("Sync complete.")
     
 @cli.command()
 @cli_context.pass_context
-@requires_project(projects.ProjectType.ADDON)
+@requires_project([projects.ProjectType.ADDON])
 def setup(context: cli_context.CLIContext, project: projects.AddonProject):
     """
     Sets up a cuhkit project for the first time.
@@ -157,11 +158,11 @@ def setup(context: cli_context.CLIContext, project: projects.AddonProject):
     """
 
     project.setup()
-    logger.info("Performed setup with cuhkit addon project.")
+    logger.info("Addon project setup complete.")
 
 @cli.command()
 @cli_context.pass_context
-@requires_project()
+@requires_project([projects.ProjectType.ADDON, projects.ProjectType.MOD])
 @click.option(
     "--server", "-s", "server_id",
     type = int,
@@ -174,7 +175,7 @@ def setup(context: cli_context.CLIContext, project: projects.AddonProject):
     help = "Whether or not to publish as a development build."
 )
 @click.confirmation_option(prompt = "Are you sure you want to publish this cuhkit project?")
-def publish(context: cli_context.CLIContext, project: projects.Project, server_id: int, is_dev: bool):
+def publish(context: cli_context.CLIContext, project: projects.AddonProject | projects.ModProject, server_id: int, is_dev: bool):
     """
     Publish a cuhkit project to cuhHub.
     """
@@ -183,10 +184,16 @@ def publish(context: cli_context.CLIContext, project: projects.Project, server_i
         try:
             project.publish(server_id, is_dev)
             logger.info("Published cuhkit addon project.")
-        except ValueError:
+        except CredentialsException:
             logger.error("No API token found in credentials. Please set one using the `set-api-token` command.")
         except FileNotFoundError:
             logger.error("Missing `playlist.xml` file in addon project directory. Try building the addon or running first-time setup. If neither work, please manually create one.")
+    elif isinstance(project, projects.ModProject):
+        try:
+            project.publish(server_id, is_dev)
+            logger.info("Published cuhkit mod project.")
+        except CredentialsException:
+            logger.error("No API token found in credentials. Please set one using the `set-api-token` command.")
 
 @cli.command()
 @cli_context.pass_context
