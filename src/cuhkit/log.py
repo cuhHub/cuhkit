@@ -21,16 +21,12 @@ limitations under the License.
 
 # // Imports
 import logging
+from coloredlogs import install
 
 # // Main
 logger = logging.getLogger("cuhkit")
-
-console_handler = logging.StreamHandler()
-console_handler.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
-
-logger.addHandler(console_handler)
-
 logger.setLevel(logging.INFO)
+install(logger = logger, fmt = "[%(levelname)s] %(asctime)s | %(message)s")
 
 def set_logging_verbose(verbose: bool = False):
     """
