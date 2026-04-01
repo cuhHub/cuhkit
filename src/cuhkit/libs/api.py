@@ -313,3 +313,19 @@ class Client():
                 self._resolve_file_for_request("mod_zip", mod_zip)
             ]
         )
+        
+    def get_persistent_data(self, key: str) -> dict | None:
+        """
+        Returns the persistent data at a key from the cuhHub API.
+
+        Args:
+            key (str): The key to get the persistent data for.
+
+        Returns:
+            dict | None: The JSON response, or None if data not found or API error.
+        """
+        
+        try:
+            return self.send_request("GET", f"/persistent-data/{key}")
+        except APIException:
+            return None
