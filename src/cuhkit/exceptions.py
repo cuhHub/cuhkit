@@ -26,7 +26,8 @@ __all__ = [
     "ProjectException",
     "ProjectNotFoundException",
     "ProjectLoadFailureException",
-    "ProjectAlreadyExistsException"
+    "ProjectAlreadyExistsException",
+    "CredentialsException"
 ]
 
 class CuhkitException(Exception):
@@ -67,6 +68,13 @@ class ProjectLoadFailureException(ProjectException):
 class ProjectAlreadyExistsException(ProjectException):
     """
     Exception class for when a cuhkit project already exists.
+    """
+
+    pass
+
+class CredentialsException(CuhkitException):
+    """
+    Exception class for bad credentials.
     """
 
     pass
