@@ -19,7 +19,7 @@ cuhkit, a CLI to streamline the development of cuhHub addons and mods, featuring
 
 Although made for cuhHub developers, you can use this for your own addons and mods too!
 
-## 🔗 Links
+## 🔗 | Links
 - GitHub: https://github.com/cuhHub/cuhkit
 - PyPi: https://pypi.org/project/cuhkit
 
