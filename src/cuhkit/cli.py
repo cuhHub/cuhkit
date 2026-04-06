@@ -25,7 +25,7 @@ from pathlib import Path
 from functools import wraps
 from typing import Callable
 
-from cuhkit import __VERSION__
+from cuhkit import __version__
 from cuhkit import projects
 from cuhkit import cli_context
 from cuhkit.log import set_logging_verbose, logger
@@ -61,7 +61,7 @@ def requires_project(project_types: list[projects.ProjectType] | None = None):
     return decorator
 
 @click.group()
-@click.version_option(__VERSION__)
+@click.version_option(__version__)
 @click.help_option("--help", "-h")
 @click.pass_context
 @click.option("verbose", "--verbose", "-v", is_flag = True, help = "Enables verbose logging.")

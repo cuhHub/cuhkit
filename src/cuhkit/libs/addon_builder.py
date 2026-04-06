@@ -28,7 +28,6 @@ from pydantic import (
     Field
 )
 
-from cuhkit import __VERSION__
 from cuhkit.log import logger
 
 from cuhkit.libs.requests import (

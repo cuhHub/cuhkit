@@ -22,11 +22,11 @@ limitations under the License.
 # // Imports
 import requests
 
-from cuhkit import __VERSION__
+from cuhkit import __version__
 from cuhkit.log import logger
 
 # // Main
-USER_AGENT = f"cuhkit/{__VERSION__}"
+USER_AGENT = f"cuhkit/{__version__}"
 
 def request(
     method: str,

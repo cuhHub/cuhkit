@@ -23,7 +23,9 @@ limitations under the License.
 import sys
 from pathlib import Path
 
-__VERSION__ = "1.1.2"
+__version__ = "1.1.2"
+__VERSION__ = __version__ # backwards compatibility - use __version__ instead
+
 CUHKIT_DATA_PATH = Path.home() / ".cuhkit"
 CUHKIT_PACKAGE_PATH = Path(__file__).parent
 
