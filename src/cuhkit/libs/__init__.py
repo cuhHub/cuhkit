@@ -26,3 +26,4 @@ from . import addon_builder
 from . import timeit
 from . import templates
 from . import requests
+from . import git_imports
