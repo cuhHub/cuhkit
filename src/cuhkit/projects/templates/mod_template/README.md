@@ -13,6 +13,10 @@ Making a custom component that contains Lua? Assuming you're using [Visual Studi
 
 Intellisense adds auto-completion, linting and more!
 
+## Mod SDK
+For convenience, the Stormworks modding SDK has been provided in `/sw_mod_sdk`.
+You can find the same SDK at `<stormworks game path>/sdk` (e.g. `C:/Program Files (x86)/Steam/steamapps/common/Stormworks/sdk`).
+
 ## Mod Documentation
 - Asset Mods: https://geometa.co.uk/wiki/stormworks/view/asset_modding
 - Custom Component Mods: https://geometa.co.uk/wiki/stormworks/view/component_modding
