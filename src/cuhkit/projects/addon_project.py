@@ -137,15 +137,18 @@ class AddonProject(Project[AddonProjectConfiguration]):
         except FileNotFoundError:
             logger.error("Failed to setup addon project, missing `playlist.xml` file in addon src directory.")
          
-    def build(self):
+    def build(self, options: addon_builder.BuildOptions = None):
         """
         Builds the addon project.
+        
+        Args:
+            options (addon_builder.BuildOptions, optional): The build options to use. Defaults to None.
         """
 
         logger.info(f"Building .lua files in {self.project_configuration.src} to {self.project_configuration.build_destination}...")       
 
-        with TimeIt(): 
-            addon_builder.build_addon(self.project_configuration.src, self.project_configuration.build_destination)
+        with TimeIt():
+            addon_builder.build_addon(self.project_configuration.src, self.project_configuration.build_destination, options)
             
     def publish(self, server_id: int, is_dev: bool = False):
         """

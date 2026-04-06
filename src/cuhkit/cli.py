@@ -28,8 +28,13 @@ from typing import Callable
 from cuhkit import __version__
 from cuhkit import projects
 from cuhkit import cli_context
+
+from cuhkit.libs.addon_builder import BuildOptions
+
 from cuhkit.log import set_logging_verbose, logger
+
 from cuhkit.exceptions import CredentialsException
+
 from cuhkit.projects import POSITION_PERSISTENT_DATA_KEY
 
 # // Main
@@ -142,12 +147,46 @@ def delete(context: cli_context.CLIContext, project: projects.Project):
 @cli.command()
 @cli_context.pass_context
 @requires_project([projects.ProjectType.ADDON, projects.ProjectType.MOD])
-def build(context: cli_context.CLIContext, project: projects.AddonProject | projects.ModProject):
+@click.option(
+    "--ignore-local-imports", "-ili", "ignore_local_imports",
+    is_flag = True,
+    help = "Whether or not to ignore local imports in build metadata files (addon only).",
+    default = False
+)
+@click.option(
+    "--ignore-web-imports", "-iwi", "ignore_web_imports",
+    is_flag = True,
+    help = "Whether or not to ignore web imports in build metadata files (addon only).",
+    default = False
+)
+@click.option(
+    "--ignore-git-imports", "-igi", "ignore_git_imports",
+    is_flag = True,
+    help = "Whether or not to ignore git imports in build metadata files (addon only).",
+    default = False
+)
+def build(
+    context: cli_context.CLIContext,
+    project: projects.AddonProject | projects.ModProject,
+    ignore_local_imports: bool,
+    ignore_web_imports: bool,
+    ignore_git_imports: bool
+):
     """
     Builds and syncs a cuhkit project.
     """
 
-    project.build()
+    if isinstance(project, projects.AddonProject):
+        build_options = BuildOptions(
+            ignore_local_imports = ignore_local_imports,
+            ignore_web_imports = ignore_web_imports,
+            ignore_git_imports = ignore_git_imports
+        )
+
+        project.build(build_options)
+    elif isinstance(project, projects.ModProject):
+        project.build()
+
     project.sync()
     logger.info("Build complete.")
     
