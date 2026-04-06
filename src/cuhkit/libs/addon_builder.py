@@ -36,6 +36,8 @@ from cuhkit.libs.requests import (
     is_plain_text_response
 )
 
+from cuhkit.libs import git_imports
+
 # // Main
 METADATA_FILE_NAME = ".build.json"
 
@@ -46,6 +48,15 @@ class WebImport(BaseModel):
     
     url: str
     name: str
+    
+class GitPathImport(BaseModel):
+    """
+    A model for a git path import.
+    """
+    
+    repo_url: str
+    branch: str
+    path: Path
 
 class BuilderMetadata(BaseModel):
     """
@@ -56,6 +67,7 @@ class BuilderMetadata(BaseModel):
     ignore: list[Path] = Field(default_factory = list)
     import_web: list[WebImport] = Field(default_factory = list)
     import_local: list[Path] = Field(default_factory = list)
+    import_git: list[GitPathImport] = Field(default_factory = list)
     
     def resolve_build_order(self, root: Path) -> list[Path]:
         """
@@ -120,6 +132,25 @@ class BuilderMetadata(BaseModel):
                     
         return handled_paths
     
+    def _handle_local_import(self, path: Path, destination_directory: Path):
+        """
+        Handles a local import.
+
+        Args:
+            path (Path): The path to import.
+            destination_directory (Path): The directory to import the local file to.
+        """
+
+        if path.is_dir():
+            destination = destination_directory / path.name
+
+            if destination.exists():
+                shutil.rmtree(destination)
+            
+            shutil.copytree(path, destination, dirs_exist_ok = True)
+        else:
+            shutil.copy2(path, destination_directory)
+    
     def handle_local_imports(self, destination_directory: Path):
         """
         Handles importing local files/directories specified in the metadata to a destination directory.
@@ -133,15 +164,7 @@ class BuilderMetadata(BaseModel):
                 logger.error(f"Failed to import local file/directory at path: {path} (path does not exist)")
                 continue
 
-            if path.is_dir():
-                destination = destination_directory / path.name
-
-                if destination.exists():
-                    shutil.rmtree(destination)
-                
-                shutil.copytree(path, destination, dirs_exist_ok = True)
-            else:
-                shutil.copy2(path, destination_directory)
+            self._handle_local_import(path, destination_directory)
                 
     def _handle_web_import(self, web_import: WebImport, destination_directory: Path):
         """
@@ -181,6 +204,47 @@ class BuilderMetadata(BaseModel):
 
         for web_import in self.import_web:
             self._handle_web_import(web_import, destination_directory)
+            
+    def _handle_git_import(self, git_import: GitPathImport, destination_directory: Path):
+        """
+        Handles a git import.
+
+        Args:
+            git_import (GitPathImport): The git import to handle.
+            destination_directory (Path): The directory to plop the import in.
+        """
+
+        try:
+            git_imports.import_path_in_repo(
+                git_import.repo_url,
+                git_import.branch,
+                git_import.path,
+                destination_directory
+            )
+        except FileNotFoundError as exception:
+            logger.error(f"Failed to import path from git repo: {git_import.path} (path does not exist in repo, exception: {exception})")
+            return
+            
+    def handle_git_imports(self, destination_directory: Path):
+        """
+        Handles all git imports.
+        
+        Args:
+            destination_directory (Path): The directory to plop the imports in.
+        """
+
+        for git_import in self.import_git:
+            self._handle_git_import(git_import, destination_directory)
+
+class BuildOptions(BaseModel):
+    """
+    Options for building an addon.
+    """
+
+    ignore_local_imports: bool = False
+    ignore_web_imports: bool = False
+    ignore_git_imports: bool = False
+    ignore_paths: list[Path] = Field(default_factory = list)
     
 def is_path_in_list(path: Path, paths: list[Path]) -> bool:
     """
@@ -261,28 +325,37 @@ def handle_content(root_directory: Path, file_path: Path, file_content: str) -> 
     relative_path = file_path.relative_to(root_directory)
     return f"-- cuhkit: {relative_path}\n{file_content}"
     
-def build_directory(directory: Path, ignore: list[Path]) -> list[str]:
+def build_directory(directory: Path, options: BuildOptions = None) -> list[str]:
     """
     Recursively builds all .lua files inside the provided directory.
 
     Args:
         directory (Path): The directory to build.
-        ignore (list[Path]): A list of paths to ignore while building.
+        options (BuildOptions, optional): The build options. Defaults to None.
 
     Returns:
         list[str]: The combined content of the directory.
     """
+    
+    options = options or BuildOptions()
 
     content: list[str] = []
 
     metadata = load_metadata(directory)
-    metadata.handle_local_imports(directory)
-    metadata.handle_web_imports(directory)
+        
+    if not options.ignore_local_imports:
+        metadata.handle_local_imports(directory)
+        
+    if not options.ignore_web_imports:
+        metadata.handle_web_imports(directory)
+        
+    if not options.ignore_git_imports:
+        metadata.handle_git_imports(directory)
     
     paths = metadata.handle_paths(directory, list(directory.iterdir()))
     
     for path in paths:
-        if is_path_in_list(path, ignore):
+        if is_path_in_list(path, options.ignore_paths):
             logger.debug(f"addon_builder: Ignoring path: {path}")
             continue
         
@@ -290,7 +363,7 @@ def build_directory(directory: Path, ignore: list[Path]) -> list[str]:
 
         if path.is_dir():
             logger.debug(f"addon_builder: Path is directory, entering")
-            content.extend(build_directory(path, ignore))
+            content.extend(build_directory(path, options))
             continue
         
         if path.suffix != ".lua":
@@ -302,16 +375,22 @@ def build_directory(directory: Path, ignore: list[Path]) -> list[str]:
 
     return content
     
-def build_addon(directory: Path, output_file: Path):
+def build_addon(directory: Path, output_file: Path, options: BuildOptions = None):
     """
     Builds all addon .lua files into a single .lua file at the specified output path.
 
     Args:
         directory (Path): The directory to build the addon from.
         output_path (Path): The file to output the built addon to.
+        options (BuildOptions, optional): The build options. Defaults to None.
     """
     
-    content: str = "\n\n\n".join(build_directory(directory, ignore = [output_file]))
+    options = options or BuildOptions()
+    
+    if not output_file in options.ignore_paths:
+        options.ignore_paths.append(output_file)
+    
+    content: str = "\n\n\n".join(build_directory(directory, options))
     output_file.parent.mkdir(parents = True, exist_ok = True)
 
     logger.debug(f"addon_builder: Writing build to output path: {output_file}")
