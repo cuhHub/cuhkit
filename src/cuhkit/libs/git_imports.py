@@ -23,9 +23,15 @@ limitations under the License.
 from git import Repo
 from pathlib import Path
 import shutil
-import tempfile
 
 from cuhkit.log import logger
+
+from cuhkit.git_cache import (
+    cache,
+    get_cloned_path,
+    was_fetched,
+    mark_fetched
+)
 
 # // Main
 def import_path_in_repo(repo_url: str, branch: str, path: Path, destination: Path):
@@ -37,17 +43,38 @@ def import_path_in_repo(repo_url: str, branch: str, path: Path, destination: Pat
         branch (str): The branch to use.
         path (Path): The path of the file/folder in the repo
         destination (Path): The path to import the file/folder to.
-        
+
     Raises:
         FileNotFoundError: If the path does not exist in the repo.
     """
-    
-    with tempfile.TemporaryDirectory(suffix = "_git_import_temp_repo") as temp_repo_path:
-        logger.debug(f"git_import: Cloning repo ({repo_url}, branch: {branch}) to temp dir: {temp_repo_path}")
-        
+
+    _import_path_from_repo(repo_url, branch, path, destination)
+
+def _import_path_from_repo(repo_url: str, branch: str, path: Path, destination: Path):
+    """
+    Internal function to import a path from an already-cloned or newly-cloned repo.
+
+    Args:
+        repo_url (str): The URL of the git repo.
+        branch (str): The branch to use.
+        path (Path): The path of the file/folder in the repo
+        destination (Path): The path to import the file/folder to.
+
+    Raises:
+        FileNotFoundError: If the path does not exist in the repo.
+        ValueError: If `path` is a directory while `destination` is a file.
+    """
+
+    entry = cache.get_entry(repo_url, branch)
+
+    if entry is None:
+        cloned_repo_path = get_cloned_path(repo_url, branch)
+
+        logger.debug(f"git_import: Cloning repo ({repo_url}, branch: {branch}) to cache: {cloned_repo_path}")
+
         repo = Repo.clone_from(
             repo_url,
-            temp_repo_path,
+            str(cloned_repo_path),
             depth = 1,
             no_checkout = True,
             filter = "blob:none",
@@ -55,19 +82,47 @@ def import_path_in_repo(repo_url: str, branch: str, path: Path, destination: Pat
         )
 
         repo.git.sparse_checkout("init", "--cone")
-        repo.git.sparse_checkout("set", str(path))
         repo.git.checkout("HEAD")
-        
-        src = temp_repo_path / path
-        
-        if not src.exists():
-            raise FileNotFoundError(f"Path does not exist in repo: {src}")
-        
+
+        cache.add_entry(repo_url, branch, cloned_repo_path)
+        mark_fetched(repo_url, branch)
+    else:
+        cloned_repo_path = entry.cloned_path
+
+        if not was_fetched(repo_url, branch):
+            logger.debug(f"git_import: Fetching latest for cached repo at {cloned_repo_path}")
+
+            repo = Repo(str(cloned_repo_path))
+            repo.remotes.origin.fetch(depth = 1)
+            repo.git.checkout(branch)
+            repo.git.reset("--hard", f"origin/{branch}")
+
+            mark_fetched(repo_url, branch)
+        else:
+            logger.debug(f"git_import: Using cached repo at {cloned_repo_path} (already fetched this runtime)")
+
+    repo = Repo(str(cloned_repo_path))
+    repo.git.sparse_checkout("set", str(path))
+
+    src = cloned_repo_path / path
+
+    if not src.exists():
+        raise FileNotFoundError(f"Path does not exist in repo: {src}")
+
+    if src.is_dir():
+        if destination.suffix:
+            raise ValueError("Cannot import a directory to a file.")
+
         destination.mkdir(parents = True, exist_ok = True)
 
-        logger.debug(f"git_import: Copying {src} to {destination}")
+        logger.debug(f"git_import: Copying directory {src} to {destination}")
+        shutil.copytree(src, destination, dirs_exist_ok = True)
 
-        if src.is_dir():
-            shutil.copytree(src, destination, dirs_exist_ok = True)
-        else:
+    else:
+        if destination.suffix:
+            logger.debug(f"git_import: Copying file {src} to {destination}")
             shutil.copy2(src, destination)
+        else:
+            logger.debug(f"git_import: Copying file {src} to directory {destination}")
+            destination.mkdir(parents = True, exist_ok = True)
+            shutil.copy2(src, destination / src.name)
