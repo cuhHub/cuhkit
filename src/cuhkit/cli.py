@@ -35,6 +35,8 @@ from cuhkit.log import set_logging_verbose, logger
 
 from cuhkit.exceptions import CredentialsException
 
+from cuhkit.git_cache import clear_cache as clear_git_repo_cache
+
 from cuhkit.projects import POSITION_PERSISTENT_DATA_KEY
 
 # // Main
@@ -80,6 +82,7 @@ def cli(context: click.Context, verbose: bool):
     cli_context.setup_context(context)
 
     if verbose:
+        logger.info("Logging set to verbose.")
         set_logging_verbose(verbose)
 
 @cli.command()
@@ -291,6 +294,16 @@ def delete_credentials(context: cli_context.CLIContext):
 
     context.credentials.remove()
     logger.info("Deleted cuhkit credentials.")
+    
+@cli.command()
+@click.confirmation_option(prompt = "Are you sure you want to clear the git repo cache? This will delete all cached git repos from git imports.")
+def clear_cache():
+    """
+    Clears the git repo cache.
+    """
+
+    clear_git_repo_cache()
+    logger.info("Cleared git repo cache.")
     
 if __name__ == "__main__":
     cli()
