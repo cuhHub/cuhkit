@@ -57,6 +57,7 @@ class GitPathImport(BaseModel):
     repo_url: str
     branch: str
     path: Path
+    destination: str = "."
 
 class BuilderMetadata(BaseModel):
     """
@@ -205,13 +206,13 @@ class BuilderMetadata(BaseModel):
         for web_import in self.import_web:
             self._handle_web_import(web_import, destination_directory)
             
-    def _handle_git_import(self, git_import: GitPathImport, destination_directory: Path):
+    def _handle_git_import(self, git_import: GitPathImport, base_directory: Path):
         """
         Handles a git import.
 
         Args:
             git_import (GitPathImport): The git import to handle.
-            destination_directory (Path): The directory to plop the import in.
+            base_directory (Path): The base directory for the imports.
         """
 
         try:
@@ -219,22 +220,25 @@ class BuilderMetadata(BaseModel):
                 git_import.repo_url,
                 git_import.branch,
                 git_import.path,
-                destination_directory
+                base_directory / git_import.destination
             )
         except FileNotFoundError as exception:
             logger.error(f"Failed to import path from git repo: {git_import.path} (path does not exist in repo, exception: {exception})")
             return
             
-    def handle_git_imports(self, destination_directory: Path):
+    def handle_git_imports(self, base_directory: Path):
         """
         Handles all git imports.
-        
+
         Args:
-            destination_directory (Path): The directory to plop the imports in.
+            base_directory (Path): The base directory for the imports.
         """
 
+        if not self.import_git:
+            return
+
         for git_import in self.import_git:
-            self._handle_git_import(git_import, destination_directory)
+            self._handle_git_import(git_import, base_directory)
 
 class BuildOptions(BaseModel):
     """

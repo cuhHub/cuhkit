@@ -37,6 +37,7 @@ from . import log
 from . import libs
 from . import projects
 from . import credentials
+from . import git_cache
 
 from . import cli_context
 from .cli import cli

@@ -35,8 +35,9 @@ def set_logging_verbose(verbose: bool = False):
     Args:
         verbose (bool): Whether to set the logging level to DEBUG. Defaults to False.
     """
-
-    if verbose:
-        logger.setLevel(logging.DEBUG)
-    else:
-        logger.setLevel(logging.INFO)
+    
+    log_level = logging.DEBUG if verbose else logging.INFO
+    logger.setLevel(log_level)
+    
+    for handler in logger.handlers:
+        handler.setLevel(log_level)
