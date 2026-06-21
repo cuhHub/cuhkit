@@ -118,7 +118,7 @@ def _import_paths_from_repo(repo_url: str, branch: str, paths: list[Path], desti
             destination.mkdir(parents = True, exist_ok = True)
 
             logger.debug(f"git_import: Copying directory {src} to {destination}")
-            shutil.copytree(src, destination, dirs_exist_ok = True)
+            shutil.copytree(src, destination / src.name, dirs_exist_ok = True)
         else:
             if destination.suffix:
                 if len(paths) > 1:
