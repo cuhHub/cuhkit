@@ -241,7 +241,10 @@ class BuilderMetadata(BaseModel):
                 base_directory / git_import.destination
             )
         except FileNotFoundError as exception:
-            logger.error(f"Failed to import paths from git repo: {git_import.paths} (path does not exist in repo, exception: {exception})")
+            logger.error(f"Failed to import paths from git repo: {git_import.paths} (a path does not exist in repo, exception: {exception})")
+            return
+        except ValueError as exception:
+            logger.error(f"Failed to import paths from git repo: {git_import.paths} (invalid path import, exception: {exception})")
             return
             
     def handle_git_imports(self, base_directory: Path):
