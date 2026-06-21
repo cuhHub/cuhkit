@@ -22,9 +22,11 @@ limitations under the License.
 # // Imports
 import shutil
 from pathlib import Path
+from typing import Any
 
 from pydantic import (
     BaseModel,
+    model_validator,
     Field
 )
 
@@ -56,8 +58,24 @@ class GitPathImport(BaseModel):
     
     repo_url: str
     branch: str
-    path: Path
+    paths: list[Path]
     destination: str = "."
+    
+    @model_validator(mode = "before")
+    @classmethod
+    def migrate_path_field(cls, data: Any):
+        """
+        Migrates the `path` field to `paths` if it exists in the data (`path` was removed in favor of `paths`)
+        """
+        
+        if isinstance(data, dict):
+            if "path" in data:
+                if "paths" in data:
+                    data["paths"].append(data.pop("path"))
+                else:
+                    data["paths"] = [data.pop("path")]
+
+        return data
 
 class BuilderMetadata(BaseModel):
     """
@@ -216,14 +234,14 @@ class BuilderMetadata(BaseModel):
         """
 
         try:
-            git_imports.import_path_in_repo(
+            git_imports.import_paths_in_repo(
                 git_import.repo_url,
                 git_import.branch,
-                git_import.path,
+                git_import.paths,
                 base_directory / git_import.destination
             )
         except FileNotFoundError as exception:
-            logger.error(f"Failed to import path from git repo: {git_import.path} (path does not exist in repo, exception: {exception})")
+            logger.error(f"Failed to import paths from git repo: {git_import.paths} (path does not exist in repo, exception: {exception})")
             return
             
     def handle_git_imports(self, base_directory: Path):
