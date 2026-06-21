@@ -46,6 +46,7 @@ def import_paths_in_repo(repo_url: str, branch: str, paths: list[Path], destinat
 
     Raises:
         FileNotFoundError: If any path does not exist in the repo.
+        ValueError: If any of the paths are invalid (e.g. trying to import a directory to a file, trying to import multiple files to a file, etc.).
     """
 
     _import_paths_from_repo(repo_url, branch, paths, destination)
@@ -62,7 +63,7 @@ def _import_paths_from_repo(repo_url: str, branch: str, paths: list[Path], desti
 
     Raises:
         FileNotFoundError: If any path does not exist in the repo.
-        ValueError: If any of the paths are invalid (e.g., trying to import a directory to a file, trying to import multiple files to a file, etc.).
+        ValueError: If any of the paths are invalid (e.g. trying to import a directory to a file, trying to import multiple files to a file, etc.).
     """
 
     entry = cache.get_entry(repo_url, branch)
